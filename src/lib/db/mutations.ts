@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { revalidatePath } from "next/cache";
 import type { PaymentMethod, PaymentProvider, PaymentStatus, ProofStatus } from "@/lib/types";
 
 // ---- Insert Order ----
@@ -84,35 +85,64 @@ export async function confirmPayment(orderId: string, confirmedByUserId?: string
   const supabase = await createClient();
   console.log(`[DB] Attempting to confirm order: ${orderId} by user: ${confirmedByUserId}`);
   
-  const { data, error, count } = await supabase
-    .from("orders")
-    .update({
-      payment_confirmed: true,
-      payment_proof_status: "confirmed",
-      confirmed_by: confirmedByUserId ?? null,
-      confirmed_at: new Date().toISOString(),
-    }, { count: 'exact' })
-    .eq("id", orderId)
-    .select("id, payment_confirmed, order_number");
+  // Standard update object
+  const updates: any = {
+    payment_confirmed: true,
+    payment_proof_status: "confirmed"
+  };
 
-  if (error) {
-    console.error(`[DB] confirmPayment update error:`, error);
-    throw error;
-  }
+  // Try to use V3 accountability columns if they exist
+  // If your DB doesn't have these, run: 
+  // ALTER TABLE orders ADD COLUMN IF NOT EXISTS confirmed_by UUID;
+  // ALTER TABLE orders ADD COLUMN IF NOT EXISTS confirmed_at TIMESTAMPTZ;
   
-  if (count === 0 || !data || data.length === 0) {
-    console.error(`[DB] confirmPayment failed: Order ${orderId} not found or RLS blocked the update.`);
-    throw new Error("The database refused to save this confirmation. Please check if you have Admin permissions.");
-  }
+  try {
+    const { data, error } = await supabase
+      .from("orders")
+      .update({
+        ...updates,
+        confirmed_by: confirmedByUserId ?? null,
+        confirmed_at: new Date().toISOString(),
+      })
+      .eq("id", orderId)
+      .select("id, payment_confirmed, order_number");
 
-  const updatedRow = data[0];
-  console.log(`[DB] confirmPayment VERIFIED: Order ${updatedRow.order_number} (${updatedRow.id}) is now payment_confirmed=${updatedRow.payment_confirmed}`);
-  
-  // Double-verify with a fresh fetch just to be 100% sure the write is committed
-  const { data: verify } = await supabase.from("orders").select("payment_confirmed").eq("id", orderId).single();
-  console.log(`[DB] confirmPayment RE-VERIFICATION: payment_confirmed is ${verify?.payment_confirmed}`);
-  
-  return updatedRow;
+    if (error) {
+      // PGRST204 is 'Column not found' - fallback to basic update
+      if (error.code === 'PGRST204' || error.message.includes("confirmed_at")) {
+        console.warn("[DB] confirmed_at column missing, falling back to basic confirmation.");
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from("orders")
+          .update(updates)
+          .eq("id", orderId)
+          .select("id, payment_confirmed, order_number");
+          
+        if (fallbackError) throw fallbackError;
+        if (!fallbackData || fallbackData.length === 0) throw new Error("Order not found or update blocked by RLS.");
+        
+        return fallbackData[0];
+      }
+      throw error;
+    }
+    
+    if (!data || data.length === 0) {
+      throw new Error("The database refused to save this confirmation. Please check if you have Admin permissions.");
+    }
+
+    return data[0];
+  } catch (err) {
+    console.error(`[DB] confirmPayment error:`, err);
+    throw err;
+  } finally {
+    // Refresh multiple paths to ensure consistency
+    try {
+      revalidatePath("/");
+      revalidatePath("/dashboard");
+      revalidatePath("/dashboard/reconciliation");
+    } catch (e) {
+      console.warn("[DB] Post-confirmation revalidation failed (non-blocking):", e);
+    }
+  }
 }
 
 // ---- Stock validation + deduction ----

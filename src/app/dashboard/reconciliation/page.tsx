@@ -245,20 +245,30 @@ export default function ReconciliationPage() {
     if (!window.confirm("Confirm payment for this order? This will mark it as settled in the system.")) return;
     
     console.log(`[Reconciliation] Confirming order ${orderId}`);
-    // Optimistic Update - STAYS PERMANENT until finished
+    
+    // Save original state for possible revert
+    const originalOrders = [...orders];
+
+    // Optimistic Update
     setOrders((prev) => 
       prev.map((o) => o.id === orderId ? { ...o, payment_confirmed: true, payment_proof_status: "confirmed" as const } : o)
     );
 
     startTransition(async () => {
       try {
-        await confirmOrderPayment(orderId);
+        const result = await confirmOrderPayment(orderId);
+        if (!result.success) {
+          throw new Error(result.error);
+        }
         console.log(`[Reconciliation] Order ${orderId} confirmed successfully`);
+        // Force re-fetch to ensure sync with server
+        await loadOrders();
       } catch (err) {
         console.error(`[Reconciliation] Confirm failed:`, err);
         setMessage(`❌ Failed to confirm order: ${err instanceof Error ? err.message : "Error"}`);
-        // Re-fetch only on error to fix state
-        await loadOrders();
+        // REVERT optimistic update on failure
+        setOrders(originalOrders);
+        alert(`Failed to save confirmation: ${err instanceof Error ? err.message : "Database Error"}`);
       }
     });
   };
@@ -267,6 +277,10 @@ export default function ReconciliationPage() {
     if (!window.confirm("Flag this order for manual review?")) return;
 
     console.log(`[Reconciliation] Flagging order ${orderId}`);
+    
+    // Save original state
+    const originalOrders = [...orders];
+
     // Optimistic Update
     setOrders((prev) => 
       prev.map((o) => o.id === orderId ? { ...o, payment_proof_status: "flagged" as const } : o)
@@ -274,12 +288,17 @@ export default function ReconciliationPage() {
 
     startTransition(async () => {
       try {
-        await updatePaymentProofStatus(orderId, "flagged");
+        const result = await updatePaymentProofStatus(orderId, "flagged");
+        if (!result.success) {
+          throw new Error(result.error);
+        }
         console.log(`[Reconciliation] Order ${orderId} flagged successfully`);
+        await loadOrders();
       } catch (err) {
         console.error(`[Reconciliation] Flag failed:`, err);
         setMessage(`❌ Failed to flag order: ${err instanceof Error ? err.message : "Error"}`);
-        await loadOrders();
+        // REVERT
+        setOrders(originalOrders);
       }
     });
   };

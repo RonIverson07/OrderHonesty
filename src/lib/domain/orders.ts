@@ -21,7 +21,7 @@ import { getRecipesForProducts } from "@/lib/db/queries";
 import { computeUnitCost, computeOrderTotals } from "@/lib/domain/costing";
 import { processStockDeduction } from "@/lib/domain/inventory";
 import { sendNewOrderAlert } from "@/lib/domain/notifications";
-import { requireRole, getCurrentUserId } from "@/lib/supabase/auth";
+import { requireRole, getCurrentUserId, checkRole } from "@/lib/supabase/auth";
 import type {
   CartItem,
   PaymentMethod,
@@ -261,22 +261,54 @@ export async function updatePaymentProofStatus(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const userId = await getCurrentUserId();
-    await requireRole("admin");
+    const isAuthorized = await checkRole("admin");
+    
+    if (!isAuthorized) {
+      return { success: false, error: "Unauthorized: Admin access required." };
+    }
+
     const supabase = await createClient();
+    
+    // Attempt update with accountability fields
+    const fullUpdate: any = {
+      payment_proof_status: proofStatus,
+      payment_confirmed: proofStatus === "confirmed",
+      confirmed_by: proofStatus === "confirmed" ? userId : null,
+      confirmed_at: proofStatus === "confirmed" ? new Date().toISOString() : null,
+    };
+
     const { error } = await supabase
       .from("orders")
-      .update({
-        payment_proof_status: proofStatus,
-        payment_confirmed: proofStatus === "confirmed",
-        confirmed_by: proofStatus === "confirmed" ? userId : null,
-        confirmed_at: proofStatus === "confirmed" ? new Date().toISOString() : null,
-      })
+      .update(fullUpdate)
       .eq("id", orderId);
-    if (error) throw error;
+
+    if (error) {
+      // PGRST204 is 'Column not found' - try basic update
+      if (error.code === 'PGRST204' || error.message.includes("confirmed_at")) {
+        console.warn("[DB] confirmed_at column missing in updatePaymentProofStatus, using basic update.");
+        const { error: fallbackError } = await supabase
+          .from("orders")
+          .update({
+            payment_proof_status: proofStatus,
+            payment_confirmed: proofStatus === "confirmed",
+          })
+          .eq("id", orderId);
+        if (fallbackError) throw fallbackError;
+      } else {
+        throw error;
+      }
+    }
+
     revalidatePath("/dashboard/reconciliation");
     return { success: true };
-  } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : "Unauthorized" };
+  } catch (err: any) {
+    console.error("[updatePaymentProofStatus] server error:", err);
+    let errorMsg = "Database update failed";
+    if (err?.message) errorMsg = err.message;
+    else if (err?.error_description) errorMsg = err.error_description;
+    else if (typeof err === "object") errorMsg = JSON.stringify(err);
+    else if (err) errorMsg = String(err);
+    return { success: false, error: errorMsg };
   }
 }
 
@@ -285,12 +317,30 @@ export async function updatePaymentProofStatus(
 export async function confirmOrderPayment(orderId: string): Promise<{ success: boolean; error?: string }> {
   try {
     const userId = await getCurrentUserId();
-    await requireRole("admin");
+    const isAuthorized = await checkRole("admin");
+    
+    if (!isAuthorized) {
+      return { success: false, error: "Unauthorized: Admin access required." };
+    }
+    
+    // Check if we are in demo mode via the environment
+    const isActuallyDemo = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes("demo");
+    
+    if (!userId && !isActuallyDemo) {
+       return { success: false, error: "Session expired. Please log in again." };
+    }
+
     await confirmPayment(orderId, userId);
     revalidatePath("/dashboard/reconciliation");
     return { success: true };
-  } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : "Unauthorized" };
+  } catch (err: any) {
+    console.error("[confirmOrderPayment] server error:", err);
+    let errorMsg = "Database confirmation failed";
+    if (err?.message) errorMsg = err.message;
+    else if (err?.error_description) errorMsg = err.error_description;
+    else if (typeof err === "object") errorMsg = JSON.stringify(err);
+    else if (err) errorMsg = String(err);
+    return { success: false, error: errorMsg };
   }
 }
 
@@ -302,7 +352,12 @@ export async function markDayReconciled(
 ): Promise<{ success: boolean; count: number; error?: string }> {
   try {
     const userId = await getCurrentUserId();
-    await requireRole("admin");
+    const isAuthorized = await checkRole("admin");
+    
+    if (!isAuthorized) {
+      return { success: false, count: 0, error: "Unauthorized: Admin access required." };
+    }
+
     const supabase = await createClient();
 
     // V3: Prevent duplicate reconciliation
