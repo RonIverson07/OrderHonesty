@@ -19,42 +19,58 @@ export default function Navbar() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function loadAuth() {
+    const supabase = createClient();
+
+    async function getProfile(userId: string) {
       try {
+        const { data } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", userId)
+          .single();
+        if (data) {
+          setProfile(data as Profile);
+        } else {
+          // Fallback if profile row is missing
+          setProfile({ id: userId, full_name: "Staff", role: 'barista', created_at: '' });
+        }
+      } catch (err) {
+        console.error("Profile fetch error:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    // 1. Initial check
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        getProfile(session.user.id);
+      } else {
         // Quick check for local demo bypass cookie
         const isDemo = document.cookie.includes("demo_role=");
         if (isDemo) {
           const roleMatch = document.cookie.match(/demo_role=(barista|admin)/);
           const demoRole = roleMatch ? roleMatch[1] : "barista";
           setProfile({ id: "demo-user", full_name: "Demo User", role: demoRole as any, created_at: "" });
-          setLoading(false);
-          return;
-        }
-
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const { data } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", user.id)
-            .single();
-          if (data) {
-            setProfile(data as Profile);
-          } else {
-            setProfile({ id: user.id, full_name: "Unknown User", role: 'barista', created_at: '' });
-          }
         } else {
           setProfile(null);
         }
-      } catch (err) {
-        console.warn("Auth initialization demo fallback:", err);
-      } finally {
         setLoading(false);
       }
-    }
-    loadAuth();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    });
+
+    // 2. Listen for changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session?.user) {
+        getProfile(session.user.id);
+      } else if (event === "SIGNED_OUT") {
+        setProfile(null);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const handleLogout = async () => {
