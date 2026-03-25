@@ -1,0 +1,264 @@
+"use client";
+
+import { useState, useEffect, useTransition } from "react";
+import { createClient } from "@/lib/supabase/browser";
+import { adminSaveProduct, adminDeleteProduct } from "@/lib/domain/orders";
+import { formatCurrency } from "@/lib/utils";
+import type { ProductWithStock } from "@/lib/types";
+
+export default function ProductsPage() {
+  const [products, setProducts] = useState<ProductWithStock[]>([]);
+  const [isPending, startTransition] = useTransition();
+  const [editing, setEditing] = useState<ProductWithStock | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [formType, setFormType] = useState<"cafe" | "retail">("retail");
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    loadProducts();
+  }, []);
+
+  async function loadProducts() {
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("products")
+        .select("*, retail_stock(*)")
+        .order("type")
+        .order("name");
+      if (error) throw error;
+      setProducts(
+        (data ?? []).map((p: Record<string, unknown>) => ({
+          ...p,
+          retail_stock: Array.isArray(p.retail_stock)
+            ? (p.retail_stock as unknown[])[0] ?? null
+            : p.retail_stock,
+        })) as ProductWithStock[]
+      );
+    } catch {
+      // Demo mode
+    }
+  }
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+
+    startTransition(async () => {
+      const result = await adminSaveProduct(formData);
+      if (result.success) {
+        setMessage("✅ Product saved");
+        setShowForm(false);
+        setEditing(null);
+        await loadProducts();
+        setTimeout(() => setMessage(""), 3000);
+      } else {
+        setMessage(`❌ ${result.error}`);
+      }
+    });
+  };
+
+  const openNew = (type: "cafe" | "retail") => {
+    setEditing(null);
+    setFormType(type);
+    setShowForm(true);
+  };
+
+  const openEdit = (product: ProductWithStock) => {
+    setEditing(product);
+    setFormType(product.type);
+    setShowForm(true);
+  };
+  const handleDelete = (id: string, name: string) => {
+    if (!confirm(`Are you sure you want to delete ${name}?`)) return;
+    startTransition(async () => {
+      const result = await adminDeleteProduct(id);
+      if (result.success) {
+        setMessage("✅ Product deleted");
+        await loadProducts();
+        setTimeout(() => setMessage(""), 3000);
+      } else {
+        setMessage(`❌ ${result.error}`);
+      }
+    });
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Products</h1>
+          <p className="text-sm text-gray-500">Manage fridge items and café drinks</p>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={() => openNew("retail")} className="btn-primary text-sm">
+            + Fridge Item
+          </button>
+          <button onClick={() => openNew("cafe")} className="btn-secondary text-sm">
+            + Café Drink
+          </button>
+        </div>
+      </div>
+
+      {message && (
+        <div className="mb-4 p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm">
+          {message}
+        </div>
+      )}
+
+      {/* Product Table */}
+      <div className="card overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-100 bg-gray-50">
+              <th className="text-left py-3 px-4 font-medium text-gray-500">Product</th>
+              <th className="text-left py-3 px-4 font-medium text-gray-500">Type</th>
+              <th className="text-right py-3 px-4 font-medium text-gray-500">Price</th>
+              <th className="text-right py-3 px-4 font-medium text-gray-500">Cost</th>
+              <th className="text-center py-3 px-4 font-medium text-gray-500">Status</th>
+              <th className="text-right py-3 px-4 font-medium text-gray-500">Stock</th>
+              <th className="text-right py-3 px-4 font-medium text-gray-500">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {products.map((p) => (
+              <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-25">
+                <td className="py-3 px-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center text-sm">
+                      {p.type === "cafe" ? "☕" : "🧊"}
+                    </div>
+                    <span className="font-medium text-gray-900">{p.name}</span>
+                  </div>
+                </td>
+                <td className="py-3 px-4">
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                    p.type === "cafe" ? "bg-amber-50 text-amber-700" : "bg-blue-50 text-blue-700"
+                  }`}>
+                    {p.type}
+                  </span>
+                </td>
+                <td className="py-3 px-4 text-right font-medium">{formatCurrency(p.selling_price)}</td>
+                <td className="py-3 px-4 text-right text-gray-500">
+                  {p.base_cost ? formatCurrency(p.base_cost) : "—"}
+                </td>
+                <td className="py-3 px-4 text-center">
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                    p.active ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-500"
+                  }`}>
+                    {p.active ? "Active" : "Inactive"}
+                  </span>
+                </td>
+                <td className="py-3 px-4 text-right text-gray-500">
+                  {p.type === "retail" ? (p.retail_stock?.stock ?? 0) : "—"}
+                </td>
+                <td className="py-3 px-4 text-right">
+                  <div className="flex justify-end gap-3">
+                    <button
+                      onClick={() => openEdit(p)}
+                      className="text-sm text-amber-600 hover:text-amber-700 font-medium"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(p.id, p.name)}
+                      className="text-sm text-red-600 hover:text-red-700 font-medium"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Modal Form */}
+      {showForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+          <form onSubmit={handleSubmit} className="card p-6 w-full max-w-md mx-4 animate-slide-in">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              {editing ? `Edit ${editing.name}` : `New ${formType === "cafe" ? "Café Drink" : "Fridge Item"}`}
+            </h2>
+
+            {editing && <input type="hidden" name="id" value={editing.id} />}
+            <input type="hidden" name="type" value={editing?.type ?? formType} />
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <input name="name" defaultValue={editing?.name ?? ""} required className="input" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Selling Price</label>
+                  <input name="selling_price" type="number" step="0.01" defaultValue={editing?.selling_price ?? ""} required className="input" />
+                </div>
+                {(editing?.type ?? formType) === "retail" && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Base Cost</label>
+                    <input name="base_cost" type="number" step="0.01" defaultValue={editing?.base_cost ?? ""} className="input" />
+                  </div>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Low Stock Threshold</label>
+                  <input name="low_stock_threshold" type="number" defaultValue={editing?.low_stock_threshold ?? ""} className="input" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Image URL</label>
+                  <input name="image_url" type="url" defaultValue={editing?.image_url ?? ""} className="input" placeholder="Optional" />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Upload Photo</label>
+                <input name="image_file" type="file" accept="image/*" className="input text-xs" />
+                <p className="text-[10px] text-gray-400 mt-1">Choosing a file will overwrite the URL above.</p>
+              </div>
+              
+              {(formType === "retail" || editing?.type === "retail") && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Stocks
+                  </label>
+                  <input name="initial_stock" type="number" defaultValue={editing?.retail_stock?.stock ?? "0"} className="input" placeholder="Quantity" />
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <input
+                  type="hidden"
+                  name="active"
+                  value={editing?.active !== false ? "true" : "false"}
+                />
+                <label className="flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    defaultChecked={editing?.active !== false}
+                    onChange={(e) => {
+                      const hidden = e.target.closest("div")?.querySelector("input[type=hidden]") as HTMLInputElement;
+                      if (hidden) hidden.value = e.target.checked ? "true" : "false";
+                    }}
+                    className="rounded border-gray-300"
+                  />
+                  Active
+                </label>
+              </div>
+            </div>
+
+            <div className="flex gap-2 mt-5">
+              <button type="submit" disabled={isPending} className="btn-primary flex-1 text-sm">
+                {isPending ? "Saving..." : "Save Product"}
+              </button>
+              <button type="button" onClick={() => { setShowForm(false); setEditing(null); }} className="btn-secondary text-sm">
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}

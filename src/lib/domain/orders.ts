@@ -1,0 +1,643 @@
+"use server";
+
+import { z } from "zod";
+import { createClient } from "@/lib/supabase/server";
+import { revalidatePath } from "next/cache";
+import {
+  insertOrder,
+  insertOrderItems,
+  insertInventoryMovement,
+  adjustRetailStock,
+  adjustIngredientStock,
+  confirmPayment,
+  createProduct,
+  updateProduct,
+  createIngredient,
+  updateIngredient,
+  saveRecipes,
+  uploadToStorage,
+} from "@/lib/db/mutations";
+import { getRecipesForProducts } from "@/lib/db/queries";
+import { computeUnitCost, computeOrderTotals } from "@/lib/domain/costing";
+import { processStockDeduction } from "@/lib/domain/inventory";
+import { sendNewOrderAlert } from "@/lib/domain/notifications";
+import { requireRole, getCurrentUserId } from "@/lib/supabase/auth";
+import type {
+  CartItem,
+  PaymentMethod,
+  OrderSource,
+  Product,
+  RecipeWithIngredient,
+} from "@/lib/types";
+
+// ---- Validation Schemas ----
+
+const OrderItemSchema = z.object({
+  productId: z.string(),
+  qty: z.number().int().positive(),
+});
+
+const SubmitOrderSchema = z.object({
+  items: z.array(OrderItemSchema).min(1),
+  source: z.enum(["fridge", "cafe"]),
+  paymentMethod: z.enum(["cash", "gcash", "bank_transfer", "hitpay"]),
+  paymentProofUrl: z.string().url().nullable().optional(),
+  orderSnapshotUrl: z.string().url().nullable().optional(),
+  notes: z.string().nullable().optional(),
+  // V3
+  customerName: z.string().max(100).nullable().optional(),
+});
+
+export type SubmitOrderInput = z.infer<typeof SubmitOrderSchema>;
+export type SubmitOrderResult = {
+  success: boolean;
+  orderId?: string;
+  orderNumber?: string;
+  error?: string;
+};
+
+// ---- Risk Flag Detection ----
+
+function detectRiskFlag(
+  source: string,
+  paymentMethod: string,
+  totalPrice: number,
+  items: { qty: number }[],
+  hasProof: boolean
+): string | null {
+  const reasons: string[] = [];
+
+  // Fridge + no proof + high value
+  if (source === "fridge" && !hasProof && totalPrice >= 500) {
+    reasons.push("High-value fridge order without payment proof");
+  }
+
+  // Abnormal quantity
+  for (const item of items) {
+    if (item.qty >= 10) {
+      reasons.push(`Abnormal quantity: ${item.qty} units`);
+      break;
+    }
+  }
+
+  return reasons.length > 0 ? reasons.join("; ") : null;
+}
+
+// ---- Submit Order (public) ----
+
+export async function submitOrder(input: SubmitOrderInput): Promise<SubmitOrderResult> {
+  try {
+    const parsed = SubmitOrderSchema.parse(input);
+    const supabase = await createClient();
+    const productIds = parsed.items.map((i) => i.productId);
+
+    const { data: products, error: productError } = await supabase
+      .from("products")
+      .select("*")
+      .in("id", productIds);
+
+    if (productError) throw productError;
+    if (!products || products.length !== productIds.length) {
+      return { success: false, error: "One or more products not found" };
+    }
+
+    // Check all products are active
+    for (const p of products) {
+      if (!p.active) {
+        return { success: false, error: `${p.name} is no longer available` };
+      }
+    }
+
+    const productMap = new Map(products.map((p: Product) => [p.id, p]));
+    const cartItems: CartItem[] = parsed.items.map((item) => ({
+      product: productMap.get(item.productId)!,
+      qty: item.qty,
+    }));
+
+    // === Pre-deduction stock validation ===
+    // Retail: check retail_stock
+    for (const item of cartItems) {
+      if (item.product.type === "retail") {
+        const { data: stockRow } = await supabase
+          .from("retail_stock")
+          .select("stock")
+          .eq("product_id", item.product.id)
+          .single();
+        const available = stockRow?.stock ?? 0;
+        if (available < item.qty) {
+          return { success: false, error: `${item.product.name}: only ${available} in stock (requested ${item.qty})` };
+        }
+      }
+    }
+
+    // Café: check ingredient sufficiency
+    const cafeProductIds = cartItems
+      .filter((c) => c.product.type === "cafe")
+      .map((c) => c.product.id);
+
+    let recipes: RecipeWithIngredient[] = [];
+    if (cafeProductIds.length > 0) {
+      recipes = await getRecipesForProducts(cafeProductIds);
+
+      const ingredientNeeds = new Map<string, { name: string; needed: number }>();
+      for (const item of cartItems) {
+        if (item.product.type !== "cafe") continue;
+        const myRecipes = recipes.filter((r) => r.product_id === item.product.id);
+        for (const recipe of myRecipes) {
+          const existing = ingredientNeeds.get(recipe.ingredient_id) ?? { name: recipe.ingredients.name, needed: 0 };
+          existing.needed += recipe.qty_required * item.qty;
+          ingredientNeeds.set(recipe.ingredient_id, existing);
+        }
+      }
+
+      for (const [ingId, need] of ingredientNeeds) {
+        const { data: ingRow } = await supabase
+          .from("ingredients")
+          .select("stock")
+          .eq("id", ingId)
+          .single();
+        const available = Number(ingRow?.stock ?? 0);
+        if (available < need.needed) {
+          return { success: false, error: `Insufficient ${need.name}: ${available} available, ${need.needed} needed` };
+        }
+      }
+    }
+
+    const itemsWithCost = cartItems.map((c) => {
+      let unitCost = 0;
+      try {
+        unitCost = computeUnitCost(c.product, recipes);
+      } catch (e) {
+        console.warn(`Cost calculation failed for ${c.product.name}`, e);
+      }
+      return { product: c.product, qty: c.qty, unitCost };
+    });
+
+    const { totalPrice, totalCost, margin } = computeOrderTotals(itemsWithCost);
+
+    const riskFlag = detectRiskFlag(
+      parsed.source,
+      parsed.paymentMethod,
+      totalPrice,
+      parsed.items,
+      !!parsed.paymentProofUrl
+    );
+
+    const order = await insertOrder({
+      source: parsed.source as OrderSource,
+      payment_method: parsed.paymentMethod as PaymentMethod,
+      payment_proof_url: parsed.paymentProofUrl ?? null,
+      payment_proof_status: parsed.paymentProofUrl ? "uploaded" : "none",
+      payment_confirmed: false,
+      order_snapshot_url: parsed.orderSnapshotUrl ?? null,
+      notes: parsed.notes ?? null,
+      total_price: totalPrice,
+      total_cost: totalCost || 0,
+      margin: margin || 0,
+      customer_name: parsed.customerName ?? null,
+      risk_flag: riskFlag,
+    });
+
+    try {
+      await insertOrderItems(
+        itemsWithCost.map((item) => ({
+          order_id: order.id,
+          product_id: item.product.id,
+          qty: item.qty,
+          price_at_sale: item.product.selling_price,
+          cost_at_sale: item.unitCost,
+        }))
+      );
+    } catch (e) {
+      console.error("Failed to insert order items:", e);
+    }
+
+    try {
+      await processStockDeduction(cartItems, recipes, order.id);
+    } catch (e) {
+      console.warn("Stock deduction failed (non-blocking):", e);
+    }
+
+    try {
+      if (order.source === "cafe") {
+        await sendNewOrderAlert(order.order_number, totalPrice);
+      }
+    } catch (e) {
+      console.warn("Alert failed (non-blocking):", e);
+    }
+
+    return { success: true, orderId: order.id, orderNumber: order.order_number };
+  } catch (err: any) {
+    console.error("[submitOrder] CRITICAL ERROR DETAILS:", JSON.stringify(err, null, 2));
+    return { success: false, error: err.message || "Internal Server Error" };
+  }
+}
+
+// ---- Update Status (admin/barista) ----
+
+export async function updateStatus(
+  orderId: string,
+  status: "new" | "preparing" | "ready" | "completed" | "cancelled"
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await requireRole("admin", "barista");
+    const supabase = await createClient();
+    const { error } = await supabase.from("orders").update({ status }).eq("id", orderId);
+    if (error) throw error;
+    revalidatePath("/dashboard/reconciliation");
+    revalidatePath("/barista");
+    return { success: true };
+  } catch (err) {
+    console.error("[updateStatus]", err);
+    return { success: false, error: err instanceof Error ? err.message : "Unauthorized" };
+  }
+}
+
+// ---- Payment Proof Status (admin) ----
+
+export async function updatePaymentProofStatus(
+  orderId: string,
+  proofStatus: "confirmed" | "flagged"
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const userId = await getCurrentUserId();
+    await requireRole("admin");
+    const supabase = await createClient();
+    const { error } = await supabase
+      .from("orders")
+      .update({
+        payment_proof_status: proofStatus,
+        payment_confirmed: proofStatus === "confirmed",
+        confirmed_by: proofStatus === "confirmed" ? userId : null,
+        confirmed_at: proofStatus === "confirmed" ? new Date().toISOString() : null,
+      })
+      .eq("id", orderId);
+    if (error) throw error;
+    revalidatePath("/dashboard/reconciliation");
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Unauthorized" };
+  }
+}
+
+// ---- Confirm Payment (admin, V3: accountability) ----
+
+export async function confirmOrderPayment(orderId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const userId = await getCurrentUserId();
+    await requireRole("admin");
+    await confirmPayment(orderId, userId);
+    revalidatePath("/dashboard/reconciliation");
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Unauthorized" };
+  }
+}
+
+// ---- Mark Day as Reconciled (admin, V3: creates reconciliation_days record) ----
+
+export async function markDayReconciled(
+  dateStr: string,
+  overrideReason?: string
+): Promise<{ success: boolean; count: number; error?: string }> {
+  try {
+    const userId = await getCurrentUserId();
+    await requireRole("admin");
+    const supabase = await createClient();
+
+    // V3: Prevent duplicate reconciliation
+    const { data: existing } = await supabase
+      .from("reconciliation_days")
+      .select("id")
+      .eq("date", dateStr)
+      .single();
+
+    if (existing) {
+      return { success: false, count: 0, error: "This date has already been reconciled" };
+    }
+
+    const startOfDay = new Date(dateStr);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(dateStr);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    // Fetch all orders for the day to compute totals
+    const { data: allOrders } = await supabase
+      .from("orders")
+      .select("total_price, payment_confirmed")
+      .gte("created_at", startOfDay.toISOString())
+      .lte("created_at", endOfDay.toISOString());
+
+    const totalExpected = (allOrders ?? []).reduce((s, o) => s + Number(o.total_price), 0);
+    const totalConfirmed = (allOrders ?? []).filter((o) => o.payment_confirmed).reduce((s, o) => s + Number(o.total_price), 0);
+
+    // Batch confirm unconfirmed orders
+    const { data, error } = await supabase
+      .from("orders")
+      .update({
+        payment_confirmed: true,
+        payment_proof_status: "confirmed",
+        confirmed_by: userId,
+        confirmed_at: new Date().toISOString(),
+      })
+      .gte("created_at", startOfDay.toISOString())
+      .lte("created_at", endOfDay.toISOString())
+      .eq("payment_confirmed", false)
+      .select("id");
+
+    if (error) throw error;
+
+    // V3: Insert reconciliation_days record
+    const { error: reconcError } = await supabase.from("reconciliation_days").insert({
+      date: dateStr,
+      total_expected: totalExpected,
+      total_confirmed: totalConfirmed + (data ?? []).reduce(() => 0, 0),
+      variance: totalExpected - totalConfirmed,
+      reconciled_by: userId,
+      reconciled_at: new Date().toISOString(),
+      override_reason: overrideReason ?? null,
+      override_by: overrideReason ? userId : null,
+      override_at: overrideReason ? new Date().toISOString() : null,
+    });
+
+    if (reconcError) console.error("[markDayReconciled] reconciliation_days insert:", reconcError);
+
+    return { success: true, count: data?.length ?? 0 };
+  } catch (err) {
+    return { success: false, count: 0, error: err instanceof Error ? err.message : "Error" };
+  }
+}
+
+// ---- Save Inventory Check (admin, V3: with performed_by + stock snapshots) ----
+
+export async function saveInventoryCheck(
+  items: { productId: string; productName: string; systemStock: number; actualCount: number }[]
+): Promise<{ success: boolean; adjusted: number; totalVariance: number; error?: string }> {
+  try {
+    const userId = await getCurrentUserId();
+    await requireRole("admin");
+    let adjusted = 0;
+    let totalVariance = 0;
+
+    for (const item of items) {
+      const delta = item.actualCount - item.systemStock;
+      if (delta === 0) continue;
+
+      totalVariance += delta;
+      adjusted++;
+
+      await adjustRetailStock(item.productId, item.actualCount);
+
+      await insertInventoryMovement({
+        item_type: "product",
+        item_id: item.productId,
+        quantity_delta: delta,
+        movement_type: "adjustment",
+        notes: `Inventory check: system=${item.systemStock}, actual=${item.actualCount}, variance=${delta > 0 ? "+" : ""}${delta} (${item.productName})`,
+        performed_by: userId,
+        previous_stock: item.systemStock,
+        new_stock: item.actualCount,
+      });
+    }
+
+    return { success: true, adjusted, totalVariance };
+  } catch (err) {
+    return { success: false, adjusted: 0, totalVariance: 0, error: err instanceof Error ? err.message : "Error" };
+  }
+}
+
+// ---- Save Ingredient Check (admin, V3) ----
+
+export async function saveIngredientCheck(
+  items: { ingredientId: string; ingredientName: string; systemStock: number; actualCount: number; unit: string }[]
+): Promise<{ success: boolean; adjusted: number; totalVariance: number; error?: string }> {
+  try {
+    const userId = await getCurrentUserId();
+    await requireRole("admin");
+    let adjusted = 0;
+    let totalVariance = 0;
+
+    for (const item of items) {
+      const delta = item.actualCount - item.systemStock;
+      if (delta === 0) continue;
+
+      totalVariance += delta;
+      adjusted++;
+
+      await adjustIngredientStock(item.ingredientId, item.actualCount);
+
+      await insertInventoryMovement({
+        item_type: "ingredient",
+        item_id: item.ingredientId,
+        quantity_delta: delta,
+        movement_type: "adjustment",
+        notes: `Ingredient audit: system=${item.systemStock}${item.unit}, actual=${item.actualCount}${item.unit}, variance=${delta > 0 ? "+" : ""}${delta}${item.unit} (${item.ingredientName})`,
+        performed_by: userId,
+        previous_stock: item.systemStock,
+        new_stock: item.actualCount,
+      });
+    }
+
+    return { success: true, adjusted, totalVariance };
+  } catch (err) {
+    return { success: false, adjusted: 0, totalVariance: 0, error: err instanceof Error ? err.message : "Error" };
+  }
+}
+
+// ---- Adjust Stock (admin, V3: with performed_by + stock snapshots + required notes) ----
+
+const AdjustStockSchema = z.object({
+  itemType: z.enum(["product", "ingredient"]),
+  itemId: z.string(),
+  newStock: z.number().min(0),
+  reason: z.enum(["restock", "adjustment", "spoilage"]),
+  notes: z.string().min(1, "Notes are required for stock adjustments"),
+});
+
+export type AdjustStockInput = z.infer<typeof AdjustStockSchema>;
+
+export async function adjustStock(input: AdjustStockInput): Promise<{ success: boolean; error?: string }> {
+  try {
+    const userId = await getCurrentUserId();
+    await requireRole("admin");
+    const parsed = AdjustStockSchema.parse(input);
+    const supabase = await createClient();
+    let currentStock = 0;
+
+    if (parsed.itemType === "product") {
+      const { data } = await supabase
+        .from("retail_stock")
+        .select("stock")
+        .eq("product_id", parsed.itemId)
+        .single();
+      currentStock = data?.stock ?? 0;
+      await adjustRetailStock(parsed.itemId, parsed.newStock);
+    } else {
+      const { data } = await supabase
+        .from("ingredients")
+        .select("stock")
+        .eq("id", parsed.itemId)
+        .single();
+      currentStock = Number(data?.stock ?? 0);
+      await adjustIngredientStock(parsed.itemId, parsed.newStock);
+    }
+
+    await insertInventoryMovement({
+      item_type: parsed.itemType,
+      item_id: parsed.itemId,
+      quantity_delta: parsed.newStock - currentStock,
+      movement_type: parsed.reason,
+      notes: parsed.notes,
+      performed_by: userId,
+      previous_stock: currentStock,
+      new_stock: parsed.newStock,
+    });
+
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Error" };
+  }
+}
+
+// ---- Expire Pending Payments (admin, V3) ----
+
+export async function expirePendingPayments(): Promise<{ success: boolean; count: number; error?: string }> {
+  try {
+    await requireRole("admin");
+    const supabase = await createClient();
+
+    const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+
+    const { data, error } = await supabase
+      .from("orders")
+      .update({ payment_status: "expired" })
+      .eq("payment_status", "pending")
+      .lt("created_at", thirtyMinAgo)
+      .select("id");
+
+    if (error) throw error;
+    return { success: true, count: data?.length ?? 0 };
+  } catch (err) {
+    return { success: false, count: 0, error: err instanceof Error ? err.message : "Error" };
+  }
+}
+
+// ---- Admin: Save Product ----
+
+export async function adminSaveProduct(formData: FormData): Promise<{ success: boolean; error?: string }> {
+  try {
+    await requireRole("admin");
+
+    const id = formData.get("id") as string | null;
+    const name = formData.get("name") as string;
+    const type = formData.get("type") as "cafe" | "retail";
+    const selling_price = parseFloat(formData.get("selling_price") as string);
+    const base_cost = formData.get("base_cost") ? parseFloat(formData.get("base_cost") as string) : null;
+    const low_stock_threshold = formData.get("low_stock_threshold")
+      ? parseInt(formData.get("low_stock_threshold") as string)
+      : null;
+    const active = formData.get("active") === "true";
+    let image_url = (formData.get("image_url") as string) || null;
+    const image_file = formData.get("image_file") as File | null;
+
+    if (image_file && image_file.size > 0 && image_file.name) {
+      try {
+        console.log(`[Storage] Uploading image: ${image_file.name}`);
+        const publicUrl = await uploadToStorage("products", image_file);
+        image_url = publicUrl;
+        console.log(`[Storage] Upload success: ${image_url}`);
+      } catch (err) {
+        console.error("[Storage] Upload failed:", err);
+        // Fallback to image_url if upload fails
+      }
+    }
+
+    const initial_stock = formData.get("initial_stock") ? parseInt(formData.get("initial_stock") as string) : 0;
+
+    if (id) {
+      await updateProduct(id, { name, selling_price, base_cost, low_stock_threshold, active, image_url });
+      
+      // If retail, also update or create the stock record
+      if (type === "retail") {
+        const supabase = await createClient();
+        const { error: stockErr } = await supabase
+          .from("retail_stock")
+          .upsert(
+            { product_id: id, stock: initial_stock, updated_at: new Date().toISOString() },
+            { onConflict: "product_id" }
+          );
+        if (stockErr) console.error("Stock update error:", stockErr);
+      }
+    } else {
+      const p = await createProduct({ name, type, selling_price, base_cost, low_stock_threshold, active, image_url });
+      
+      // If retail, also create the stock record
+      if (type === "retail" && p?.id) {
+        const supabase = await createClient();
+        await supabase
+          .from("retail_stock")
+          .upsert(
+            { product_id: p.id, stock: initial_stock },
+            { onConflict: "product_id" }
+          );
+      }
+    }
+
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Error" };
+  }
+}
+
+// ---- Admin: Save Ingredient ----
+
+export async function adminSaveIngredient(formData: FormData): Promise<{ success: boolean; error?: string }> {
+  try {
+    await requireRole("admin");
+
+    const id = formData.get("id") as string | null;
+    const name = formData.get("name") as string;
+    const unit = formData.get("unit") as string;
+    const unit_cost = parseFloat(formData.get("unit_cost") as string);
+    const low_stock_threshold = formData.get("low_stock_threshold")
+      ? parseFloat(formData.get("low_stock_threshold") as string)
+      : 0;
+
+    if (id) {
+      await updateIngredient(id, { name, unit, unit_cost, low_stock_threshold });
+    } else {
+      await createIngredient({ name, unit, unit_cost, low_stock_threshold });
+    }
+
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Error" };
+  }
+}
+
+// ---- Admin: Save Recipes ----
+
+export async function adminSaveRecipes(
+  productId: string,
+  recipes: { ingredient_id: string; qty_required: number }[]
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await requireRole("admin");
+    await saveRecipes(productId, recipes);
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Error" };
+  }
+}
+// ---- Admin: Delete Product ----
+export async function adminDeleteProduct(id: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    await requireRole("admin");
+    const supabase = await createClient();
+    const { error } = await supabase.from("products").delete().eq("id", id);
+    if (error) throw error;
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Error" };
+  }
+}

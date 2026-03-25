@@ -1,0 +1,225 @@
+"use client";
+
+import { useState, useEffect, useTransition } from "react";
+import { createClient } from "@/lib/supabase/browser";
+import { adminSaveRecipes } from "@/lib/domain/orders";
+import { formatCurrency } from "@/lib/utils";
+import type { Product, Ingredient, RecipeWithIngredient } from "@/lib/types";
+
+interface RecipeRow {
+  ingredient_id: string;
+  qty_required: number;
+}
+
+export default function RecipesPage() {
+  const [cafeProducts, setCafeProducts] = useState<Product[]>([]);
+  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [recipes, setRecipes] = useState<RecipeRow[]>([]);
+  const [existingRecipes, setExistingRecipes] = useState<RecipeWithIngredient[]>([]);
+  const [isPending, startTransition] = useTransition();
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const supabase = createClient();
+        const [{ data: prods }, { data: ings }] = await Promise.all([
+          supabase.from("products").select("*").eq("type", "cafe").order("name"),
+          supabase.from("ingredients").select("*").order("name"),
+        ]);
+        setCafeProducts((prods ?? []) as Product[]);
+        setIngredients((ings ?? []) as Ingredient[]);
+      } catch { /* demo */ }
+    }
+    load();
+  }, []);
+
+  const selectProduct = async (product: Product) => {
+    setSelectedProduct(product);
+    setMessage("");
+    try {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("recipes")
+        .select("*, ingredients(*)")
+        .eq("product_id", product.id);
+      const fetched = (data ?? []) as RecipeWithIngredient[];
+      setExistingRecipes(fetched);
+      setRecipes(fetched.map((r) => ({ ingredient_id: r.ingredient_id, qty_required: r.qty_required })));
+    } catch {
+      setRecipes([]);
+      setExistingRecipes([]);
+    }
+  };
+
+  const addRow = () => setRecipes([...recipes, { ingredient_id: "", qty_required: 0 }]);
+  const removeRow = (idx: number) => setRecipes(recipes.filter((_, i) => i !== idx));
+
+  const updateRow = (idx: number, field: keyof RecipeRow, value: string | number) => {
+    setRecipes(recipes.map((r, i) => (i === idx ? { ...r, [field]: value } : r)));
+  };
+
+  const ingredientMap = new Map(ingredients.map((i) => [i.id, i]));
+
+  const totalCost = recipes.reduce((sum, r) => {
+    const ing = ingredientMap.get(r.ingredient_id);
+    return sum + (ing ? ing.unit_cost * r.qty_required : 0);
+  }, 0);
+
+  const margin = selectedProduct ? selectedProduct.selling_price - totalCost : 0;
+  const marginPct = selectedProduct && selectedProduct.selling_price > 0
+    ? ((margin / selectedProduct.selling_price) * 100).toFixed(1) : "0";
+
+  const handleSave = () => {
+    if (!selectedProduct) return;
+    const valid = recipes.filter((r) => r.ingredient_id && r.qty_required > 0);
+
+    startTransition(async () => {
+      const result = await adminSaveRecipes(selectedProduct.id, valid);
+      if (result.success) {
+        setMessage("✅ Recipe saved");
+        setTimeout(() => setMessage(""), 3000);
+      } else {
+        setMessage(`❌ ${result.error}`);
+      }
+    });
+  };
+
+  return (
+    <div>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Recipe Builder</h1>
+        <p className="text-sm text-gray-500">Define ingredient breakdown for café drinks</p>
+      </div>
+
+      {message && (
+        <div className="mb-4 p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm">
+          {message}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Product List */}
+        <div className="card p-4">
+          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Café Products</h3>
+          <div className="space-y-1">
+            {cafeProducts.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => selectProduct(p)}
+                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
+                  selectedProduct?.id === p.id
+                    ? "bg-amber-50 text-amber-700 font-medium"
+                    : "text-gray-600 hover:bg-gray-50"
+                }`}
+              >
+                {p.name}
+                <span className="text-xs text-gray-400 ml-2">{formatCurrency(p.selling_price)}</span>
+              </button>
+            ))}
+            {cafeProducts.length === 0 && (
+              <p className="text-sm text-gray-400 py-4 text-center">No café products added yet</p>
+            )}
+          </div>
+        </div>
+
+        {/* Recipe Editor */}
+        <div className="lg:col-span-2">
+          {selectedProduct ? (
+            <div className="card p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {selectedProduct.name}
+                  <span className="text-sm font-normal text-gray-400 ml-2">
+                    {formatCurrency(selectedProduct.selling_price)}
+                  </span>
+                </h3>
+                <button onClick={addRow} className="btn-secondary text-sm">
+                  + Add Ingredient
+                </button>
+              </div>
+
+              {recipes.length === 0 ? (
+                <p className="text-sm text-gray-400 py-6 text-center">
+                  No recipe defined. Click &ldquo;+ Add Ingredient&rdquo; to start.
+                </p>
+              ) : (
+                <div className="space-y-2 mb-4">
+                  {recipes.map((row, idx) => {
+                    const ing = ingredientMap.get(row.ingredient_id);
+                    const lineCost = ing ? ing.unit_cost * row.qty_required : 0;
+                    return (
+                      <div key={idx} className="flex items-center gap-2">
+                        <select
+                          value={row.ingredient_id}
+                          onChange={(e) => updateRow(idx, "ingredient_id", e.target.value)}
+                          className="input flex-1"
+                        >
+                          <option value="">Select ingredient</option>
+                          {ingredients.map((i) => (
+                            <option key={i.id} value={i.id}>{i.name} ({i.unit})</option>
+                          ))}
+                        </select>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={row.qty_required || ""}
+                          onChange={(e) => updateRow(idx, "qty_required", parseFloat(e.target.value) || 0)}
+                          className="input w-24"
+                          placeholder="Qty"
+                        />
+                        <span className="text-xs text-gray-400 w-20 text-right">
+                          {formatCurrency(lineCost)}
+                        </span>
+                        <button
+                          onClick={() => removeRow(idx)}
+                          className="text-red-400 hover:text-red-600 text-lg px-1"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Cost Summary */}
+              {recipes.length > 0 && (
+                <div className="border-t border-gray-100 pt-3 mb-4">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Raw Material Cost</span>
+                    <span className="font-semibold text-gray-900">{formatCurrency(totalCost)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm mt-1">
+                    <span className="text-gray-500">Selling Price</span>
+                    <span>{formatCurrency(selectedProduct.selling_price)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm mt-1">
+                    <span className="text-gray-500">Margin</span>
+                    <span className={`font-semibold ${margin >= 0 ? "text-emerald-600" : "text-red-600"}`}>
+                      {formatCurrency(margin)} ({marginPct}%)
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <button
+                onClick={handleSave}
+                disabled={isPending}
+                className="btn-primary w-full text-sm"
+              >
+                {isPending ? "Saving..." : "Save Recipe"}
+              </button>
+            </div>
+          ) : (
+            <div className="card p-8 text-center text-gray-400">
+              <p className="text-3xl mb-2">📋</p>
+              <p>Select a café product to edit its recipe</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
