@@ -226,6 +226,24 @@ export default function FridgePage() {
               ))}
             </div>
           </div>
+          {/* QR Code Helper for GCash */}
+          {paymentMethod === "gcash" && (
+            <div className="mb-4 p-4 rounded-xl bg-amber-50 border border-amber-200 animate-slide-in">
+              <p className="text-xs font-bold text-amber-800 mb-2 uppercase tracking-wider flex items-center gap-1.5">
+                <span className="text-lg">🔳</span> Scan to Pay (GCash)
+              </p>
+              <div className="w-full max-w-[350px] mx-auto bg-white rounded-lg p-2 shadow-sm border border-amber-100 overflow-hidden">
+                <img 
+                  src="/gcashqr.jpeg" 
+                  alt="GCash QR Code" 
+                  className="w-full h-auto object-contain"
+                />
+              </div>
+              <p className="text-[10px] text-amber-600 mt-2 text-center font-medium leading-tight">
+                Please scan and pay, then upload your <br/> screenshot below as proof of payment.
+              </p>
+            </div>
+          )}
 
           {/* Payment Proof */}
           {paymentMethod !== "cash" && (

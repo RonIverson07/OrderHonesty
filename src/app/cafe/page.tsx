@@ -33,7 +33,7 @@ export default function CafePage() {
     async function load() {
       try {
         const supabase = createClient();
-        
+
         // Load products (existing logic)
         const { data: productsData, error: prodError } = await supabase
           .from("products").select("*").eq("type", "cafe").eq("active", true).order("name");
@@ -62,10 +62,10 @@ export default function CafePage() {
               const servings = Math.floor(ing.stock / (needed || 1));
               minServings = Math.min(minServings, servings);
             }
-            return { 
-              ...product, 
-              available: minServings === Infinity || minServings > 0, 
-              max_servings: minServings === Infinity ? 999 : minServings 
+            return {
+              ...product,
+              available: minServings === Infinity || minServings > 0,
+              max_servings: minServings === Infinity ? 999 : minServings
             };
           }
         );
@@ -276,11 +276,10 @@ export default function CafePage() {
                 <button
                   key={opt.value}
                   onClick={() => setPaymentMethod(opt.value)}
-                  className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-all border ${
-                    paymentMethod === opt.value
-                      ? "bg-amber-50 border-amber-300 text-amber-700"
-                      : "bg-white border-gray-200 text-gray-500 hover:bg-gray-50"
-                  }`}
+                  className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-all border ${paymentMethod === opt.value
+                    ? "bg-amber-50 border-amber-300 text-amber-700"
+                    : "bg-white border-gray-200 text-gray-500 hover:bg-gray-50"
+                    }`}
                 >
                   <span className="block text-lg mb-0.5">{opt.icon}</span>
                   {opt.label}
@@ -288,6 +287,24 @@ export default function CafePage() {
               ))}
             </div>
           </div>
+          {/* QR Code Helper for GCash */}
+          {paymentMethod === "gcash" && (
+            <div className="mb-4 p-4 rounded-xl bg-amber-50 border border-amber-200 animate-slide-in">
+              <p className="text-xs font-bold text-amber-800 mb-2 uppercase tracking-wider flex items-center gap-1.5">
+                <span className="text-lg">🔳</span> Scan to Pay (GCash)
+              </p>
+              <div className="aspect-square w-full max-w-[320px] mx-auto bg-white rounded-lg p-2 shadow-sm border border-amber-100 overflow-hidden">
+                <img
+                  src="/gcashqr.jpeg"
+                  alt="GCash QR Code"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+              <p className="text-[10px] text-amber-600 mt-2 text-center font-medium leading-tight">
+                Please scan and pay, then upload your <br /> screenshot below as proof of payment.
+              </p>
+            </div>
+          )}
 
           {/* Payment Proof */}
           {paymentMethod !== "cash" && (
