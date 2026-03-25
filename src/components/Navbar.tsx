@@ -146,9 +146,6 @@ export default function Navbar() {
                 )}
                 {profile ? (
                   <div className="flex items-center gap-3 ml-1">
-                    <span className="text-xs font-semibold px-2 py-1 bg-gray-100 text-gray-700 rounded-full hidden sm:block">
-                      {profile.role}
-                    </span>
                     <button
                       onClick={handleLogout}
                       className="text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 px-3 py-2 rounded-lg transition-colors"
