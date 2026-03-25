@@ -356,13 +356,21 @@ export async function uploadToStorage(
   bucket: string,
   file: File
 ): Promise<string> {
-  const supabase = await createClient();
+  // Use service role key to ensure we have permission to upload
+  const serviceClient = (await import("@supabase/supabase-js")).createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+  
   const ext = file.name.split(".").pop() ?? "jpg";
   const fileName = `${crypto.randomUUID()}.${ext}`;
 
-  const { error } = await supabase.storage.from(bucket).upload(fileName, file);
-  if (error) throw error;
+  const { error } = await serviceClient.storage.from(bucket).upload(fileName, file);
+  if (error) {
+    console.error(`[Storage] Upload error for ${fileName}:`, error);
+    throw error;
+  }
 
-  const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(fileName);
+  const { data: urlData } = serviceClient.storage.from(bucket).getPublicUrl(fileName);
   return urlData.publicUrl;
 }

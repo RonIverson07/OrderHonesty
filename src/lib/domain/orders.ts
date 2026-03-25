@@ -531,61 +531,74 @@ export async function adminSaveProduct(formData: FormData): Promise<{ success: b
     const id = formData.get("id") as string | null;
     const name = formData.get("name") as string;
     const type = formData.get("type") as "cafe" | "retail";
-    const selling_price = parseFloat(formData.get("selling_price") as string);
+    const selling_price = parseFloat(formData.get("selling_price") as string) || 0;
     const base_cost = formData.get("base_cost") ? parseFloat(formData.get("base_cost") as string) : null;
     const low_stock_threshold = formData.get("low_stock_threshold")
       ? parseInt(formData.get("low_stock_threshold") as string)
       : null;
     const active = formData.get("active") === "true";
     let image_url = (formData.get("image_url") as string) || null;
-    const image_file = formData.get("image_file") as File | null;
+    const image_file = formData.get("image_file");
 
-    if (image_file && image_file.size > 0 && image_file.name) {
+    if (image_file && typeof image_file === "object" && (image_file as any).size > 0) {
+      const file = image_file as File;
       try {
-        console.log(`[Storage] Uploading image: ${image_file.name}`);
-        const publicUrl = await uploadToStorage("products", image_file);
+        console.log(`[Storage] Uploading ${file.name} to product-images...`);
+        const publicUrl = await uploadToStorage("product-images", file);
         image_url = publicUrl;
-        console.log(`[Storage] Upload success: ${image_url}`);
-      } catch (err) {
+        console.log(`[Storage] Uploaded: ${image_url}`);
+      } catch (err: any) {
         console.error("[Storage] Upload failed:", err);
-        // Fallback to image_url if upload fails
+        return { success: false, error: "Image storage error: " + (err.message || "Unknown error") };
       }
     }
 
     const initial_stock = formData.get("initial_stock") ? parseInt(formData.get("initial_stock") as string) : 0;
+    const finalStock = isNaN(initial_stock) ? 0 : initial_stock;
 
     if (id) {
+      console.log(`[Admin] Updating product: ${id}`);
       await updateProduct(id, { name, selling_price, base_cost, low_stock_threshold, active, image_url });
       
-      // If retail, also update or create the stock record
       if (type === "retail") {
         const supabase = await createClient();
-        const { error: stockErr } = await supabase
+        await supabase
           .from("retail_stock")
           .upsert(
-            { product_id: id, stock: initial_stock, updated_at: new Date().toISOString() },
+            { product_id: id, stock: finalStock, updated_at: new Date().toISOString() },
             { onConflict: "product_id" }
           );
-        if (stockErr) console.error("Stock update error:", stockErr);
       }
     } else {
+      console.log(`[Admin] Creating new product: ${name}`);
       const p = await createProduct({ name, type, selling_price, base_cost, low_stock_threshold, active, image_url });
       
-      // If retail, also create the stock record
       if (type === "retail" && p?.id) {
         const supabase = await createClient();
         await supabase
           .from("retail_stock")
           .upsert(
-            { product_id: p.id, stock: initial_stock },
+            { product_id: p.id, stock: finalStock, updated_at: new Date().toISOString() },
             { onConflict: "product_id" }
           );
       }
     }
 
+    // Refresh app views
+    try {
+      revalidatePath("/");
+      revalidatePath("/cafe");
+      revalidatePath("/fridge");
+      revalidatePath("/dashboard/products");
+    } catch (e) {
+      console.warn("[Admin] Revalidation failed (non-blocking):", e);
+    }
+
+    console.log("[Admin] Save successful!");
     return { success: true };
-  } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : "Error" };
+  } catch (err: any) {
+    console.error("[Admin] Critical save error:", err);
+    return { success: false, error: err.message || "An unexpected database error occurred" };
   }
 }
 

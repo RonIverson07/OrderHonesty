@@ -45,15 +45,26 @@ export default function ProductsPage() {
     const formData = new FormData(e.currentTarget);
 
     startTransition(async () => {
-      const result = await adminSaveProduct(formData);
-      if (result.success) {
-        setMessage("✅ Product saved");
-        setShowForm(false);
-        setEditing(null);
-        await loadProducts();
-        setTimeout(() => setMessage(""), 3000);
-      } else {
-        setMessage(`❌ ${result.error}`);
+      try {
+        console.log("[Client] Submitting product form...");
+        const result = await adminSaveProduct(formData);
+        console.log("[Client] Save result:", result);
+        
+        if (result && result.success) {
+          setMessage("✅ Product saved successfully");
+          setShowForm(false);
+          setEditing(null);
+          // Small delay before reloading to allow DB to propagate
+          setTimeout(async () => {
+            await loadProducts();
+          }, 100);
+          setTimeout(() => setMessage(""), 3000);
+        } else {
+          setMessage(`❌ ${result?.error || "Failed to save product"}`);
+        }
+      } catch (err: any) {
+        console.error("[Client] Submission error:", err);
+        setMessage(`❌ Error: ${err.message || "Something went wrong"}`);
       }
     });
   };
