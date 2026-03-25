@@ -312,6 +312,7 @@ export async function updateIngredient(
     unit?: string;
     unit_cost?: number;
     low_stock_threshold?: number;
+    stock?: number;
   }
 ) {
   const supabase = await createClient();

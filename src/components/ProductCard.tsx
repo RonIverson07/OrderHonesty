@@ -1,6 +1,6 @@
 "use client";
 
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, getImageUrl } from "@/lib/utils";
 import type { ProductWithStock } from "@/lib/types";
 
 interface ProductCardProps {
@@ -35,7 +35,7 @@ export default function ProductCard({
       <div className="aspect-[4/3] bg-gradient-to-br from-amber-50 to-orange-50 relative overflow-hidden">
         {product.image_url ? (
           <img
-            src={product.image_url}
+            src={getImageUrl(product.image_url) ?? ""}
             alt={product.name}
             className="w-full h-full object-cover"
           />

@@ -4,7 +4,7 @@ import { useState, useEffect, useTransition, useRef } from "react";
 import OrderSnapshot from "@/components/OrderSnapshot";
 import { createClient } from "@/lib/supabase/browser";
 import { submitOrder } from "@/lib/domain/orders";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, getImageUrl } from "@/lib/utils";
 import type { CafeProductAvailability, PaymentMethod } from "@/lib/types";
 
 const ALL_PAYMENT_OPTIONS: { value: PaymentMethod; label: string; icon: string }[] = [
@@ -187,7 +187,7 @@ export default function CafePage() {
               {/* Image */}
               <div className="aspect-[4/3] bg-gradient-to-br from-amber-50 to-orange-50 relative">
                 {product.image_url ? (
-                  <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+                  <img src={getImageUrl(product.image_url) ?? ""} alt={product.name} className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <span className="text-4xl opacity-40">☕</span>

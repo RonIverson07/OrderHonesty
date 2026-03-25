@@ -142,9 +142,15 @@ export default function IngredientsPage() {
                   <input name="unit_cost" type="number" step="0.0001" defaultValue={editing?.unit_cost ?? ""} required className="input" />
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Low Stock Threshold</label>
-                <input name="low_stock_threshold" type="number" step="0.01" defaultValue={editing?.low_stock_threshold ?? ""} className="input" />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Stock</label>
+                  <input name="stock" type="number" step="0.01" defaultValue={editing?.stock ?? "0"} required className="input" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Low Stock Threshold</label>
+                  <input name="low_stock_threshold" type="number" step="0.01" defaultValue={editing?.low_stock_threshold ?? ""} className="input" />
+                </div>
               </div>
             </div>
             <div className="flex gap-2 mt-5">

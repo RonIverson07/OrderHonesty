@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useTransition } from "react";
 import { createClient } from "@/lib/supabase/browser";
-import { adminSaveProduct, adminDeleteProduct } from "@/lib/domain/orders";
-import { formatCurrency } from "@/lib/utils";
+import { adminSaveProduct, adminDeleteProduct, adminToggleProductStatus } from "@/lib/domain/orders";
+import { formatCurrency, getImageUrl } from "@/lib/utils";
 import type { ProductWithStock } from "@/lib/types";
 
 export default function ProductsPage() {
@@ -13,6 +13,11 @@ export default function ProductsPage() {
   const [showForm, setShowForm] = useState(false);
   const [formType, setFormType] = useState<"cafe" | "retail">("retail");
   const [message, setMessage] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filteredProducts = products.filter(p => 
+    p.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   useEffect(() => {
     loadProducts();
@@ -80,6 +85,17 @@ export default function ProductsPage() {
     setFormType(product.type);
     setShowForm(true);
   };
+  const handleToggle = (id: string, current: boolean) => {
+    startTransition(async () => {
+      const result = await adminToggleProductStatus(id, current);
+      if (result.success) {
+        await loadProducts();
+      } else {
+        setMessage(`❌ ${result.error}`);
+      }
+    });
+  };
+
   const handleDelete = (id: string, name: string) => {
     if (!confirm(`Are you sure you want to delete ${name}?`)) return;
     startTransition(async () => {
@@ -96,16 +112,34 @@ export default function ProductsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Products</h1>
           <p className="text-sm text-gray-500">Manage fridge items and café drinks</p>
         </div>
+        
+        <div className="flex-1 flex justify-center max-w-sm">
+          <div className="relative w-full">
+            <input
+              type="text"
+              placeholder="Search products..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="input !pl-10 h-10 w-full bg-white border-gray-200 focus:border-amber-500 focus:ring-amber-500"
+            />
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </span>
+          </div>
+        </div>
+
         <div className="flex gap-2">
-          <button onClick={() => openNew("retail")} className="btn-primary text-sm">
+          <button onClick={() => openNew("retail")} className="btn-primary text-sm h-10 px-4">
             + Fridge Item
           </button>
-          <button onClick={() => openNew("cafe")} className="btn-secondary text-sm">
+          <button onClick={() => openNew("cafe")} className="btn-secondary text-sm h-10 px-4">
             + Café Drink
           </button>
         </div>
@@ -132,14 +166,18 @@ export default function ProductsPage() {
             </tr>
           </thead>
           <tbody>
-            {products.map((p) => (
+            {filteredProducts.map((p) => (
               <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-25">
                 <td className="py-3 px-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center text-sm">
-                      {p.type === "cafe" ? "☕" : "🧊"}
+                    <div className="w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center text-base overflow-hidden border border-gray-100 shrink-0 shadow-sm">
+                      {p.image_url ? (
+                        <img src={getImageUrl(p.image_url) ?? ""} alt={p.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <span>{p.type === "cafe" ? "☕" : "🧊"}</span>
+                      )}
                     </div>
-                    <span className="font-medium text-gray-900">{p.name}</span>
+                    <span className="font-medium text-gray-900 truncate">{p.name}</span>
                   </div>
                 </td>
                 <td className="py-3 px-4">
@@ -160,11 +198,17 @@ export default function ProductsPage() {
                     {p.active ? "Active" : "Inactive"}
                   </span>
                 </td>
-                <td className="py-3 px-4 text-right text-gray-500">
-                  {p.type === "retail" ? (p.retail_stock?.stock ?? 0) : "—"}
+                <td className="py-3 px-4 text-right text-gray-900 font-medium">
+                  {p.retail_stock?.stock ?? 0}
                 </td>
                 <td className="py-3 px-4 text-right">
                   <div className="flex justify-end gap-3">
+                    <button
+                      onClick={() => handleToggle(p.id, p.active)}
+                      className={`text-sm font-medium ${p.active ? "text-gray-500 hover:text-gray-700 underline" : "text-emerald-600 hover:text-emerald-700 font-bold"}`}
+                    >
+                      {p.active ? "Deactivate" : "Activate"}
+                    </button>
                     <button
                       onClick={() => openEdit(p)}
                       className="text-sm text-amber-600 hover:text-amber-700 font-medium"
@@ -206,22 +250,25 @@ export default function ProductsPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Selling Price</label>
                   <input name="selling_price" type="number" step="0.01" defaultValue={editing?.selling_price ?? ""} required className="input" />
                 </div>
-                {(editing?.type ?? formType) === "retail" && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Base Cost</label>
-                    <input name="base_cost" type="number" step="0.01" defaultValue={editing?.base_cost ?? ""} className="input" />
-                  </div>
-                )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Base Cost</label>
+                  <input name="base_cost" type="number" step="0.01" defaultValue={editing?.base_cost ?? ""} className="input" />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Stock</label>
+                  <input name="initial_stock" type="number" defaultValue={editing?.retail_stock?.stock ?? "0"} className="input" placeholder="Quantity" />
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Low Stock Threshold</label>
                   <input name="low_stock_threshold" type="number" defaultValue={editing?.low_stock_threshold ?? ""} className="input" />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Image URL</label>
-                  <input name="image_url" type="url" defaultValue={editing?.image_url ?? ""} className="input" placeholder="Optional" />
-                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Image URL</label>
+                <input name="image_url" type="url" defaultValue={editing?.image_url ?? ""} className="input" placeholder="Optional" />
               </div>
               
               <div>
@@ -229,15 +276,6 @@ export default function ProductsPage() {
                 <input name="image_file" type="file" accept="image/*" className="input text-xs" />
                 <p className="text-[10px] text-gray-400 mt-1">Choosing a file will overwrite the URL above.</p>
               </div>
-              
-              {(formType === "retail" || editing?.type === "retail") && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Stocks
-                  </label>
-                  <input name="initial_stock" type="number" defaultValue={editing?.retail_stock?.stock ?? "0"} className="input" placeholder="Quantity" />
-                </div>
-              )}
               <div className="flex items-center gap-2">
                 <input
                   type="hidden"

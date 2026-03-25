@@ -36,3 +36,14 @@ export function timeAgo(dateStr: string): string {
     if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
     return `${Math.floor(seconds / 86400)}d ago`;
 }
+// ---- Image URL helper ----
+
+export function getImageUrl(url: string | null): string | null {
+  if (!url) return null;
+  if (url.startsWith("http") || url.startsWith("data:")) return url;
+  
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!supabaseUrl) return url;
+  
+  return `${supabaseUrl}/storage/v1/object/public/product-images/${url.replace(/^\/+/, '')}`;
+}

@@ -559,21 +559,19 @@ export async function adminSaveProduct(formData: FormData): Promise<{ success: b
     if (id) {
       console.log(`[Admin] Updating product: ${id}`);
       await updateProduct(id, { name, selling_price, base_cost, low_stock_threshold, active, image_url });
-      
-      if (type === "retail") {
-        const supabase = await createClient();
-        await supabase
-          .from("retail_stock")
-          .upsert(
-            { product_id: id, stock: finalStock, updated_at: new Date().toISOString() },
-            { onConflict: "product_id" }
-          );
-      }
+
+      const supabase = await createClient();
+      await supabase
+        .from("retail_stock")
+        .upsert(
+          { product_id: id, stock: finalStock, updated_at: new Date().toISOString() },
+          { onConflict: "product_id" }
+        );
     } else {
       console.log(`[Admin] Creating new product: ${name}`);
       const p = await createProduct({ name, type, selling_price, base_cost, low_stock_threshold, active, image_url });
-      
-      if (type === "retail" && p?.id) {
+
+      if (p?.id) {
         const supabase = await createClient();
         await supabase
           .from("retail_stock")
@@ -616,10 +614,12 @@ export async function adminSaveIngredient(formData: FormData): Promise<{ success
       ? parseFloat(formData.get("low_stock_threshold") as string)
       : 0;
 
+    const stock = formData.get("stock") ? parseFloat(formData.get("stock") as string) : 0;
+
     if (id) {
-      await updateIngredient(id, { name, unit, unit_cost, low_stock_threshold });
+      await updateIngredient(id, { name, unit, unit_cost, low_stock_threshold, stock });
     } else {
-      await createIngredient({ name, unit, unit_cost, low_stock_threshold });
+      await createIngredient({ name, unit, unit_cost, low_stock_threshold, stock });
     }
 
     return { success: true };
@@ -642,16 +642,60 @@ export async function adminSaveRecipes(
     return { success: false, error: err instanceof Error ? err.message : "Error" };
   }
 }
+// ---- Admin: Toggle Product Status ----
+export async function adminToggleProductStatus(id: string, currentStatus: boolean): Promise<{ success: boolean; error?: string }> {
+  try {
+    await requireRole("admin");
+    const supabase = await createClient();
+    const { error } = await supabase
+      .from("products")
+      .update({ active: !currentStatus })
+      .eq("id", id);
+      
+    if (error) throw error;
+    
+    revalidatePath("/");
+    revalidatePath("/cafe");
+    revalidatePath("/fridge");
+    revalidatePath("/dashboard/products");
+    
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Error" };
+  }
+}
+
 // ---- Admin: Delete Product ----
 export async function adminDeleteProduct(id: string): Promise<{ success: boolean; error?: string }> {
   try {
     await requireRole("admin");
     const supabase = await createClient();
+    
+    // 1. Delete associated recipes
+    await supabase.from("recipes").delete().eq("product_id", id);
+    
+    // 2. Delete from retail_stock
+    await supabase.from("retail_stock").delete().eq("product_id", id);
+    
+    // 3. Delete the product
     const { error } = await supabase.from("products").delete().eq("id", id);
-    if (error) throw error;
+    if (error) {
+      // If it's a foreign key violation from order_items
+      if (error.code === "23503") {
+        throw new Error("Cannot delete this product because it has been ordered. Try deactivating it instead.");
+      }
+      throw error;
+    }
+    
+    revalidatePath("/");
+    revalidatePath("/cafe");
+    revalidatePath("/fridge");
+    revalidatePath("/dashboard/products");
+    
     return { success: true };
-  } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : "Error" };
+  } catch (err: any) {
+    console.error("[Admin] Delete failed:", err);
+    return { success: false, error: err.message || "Error" };
   }
 }
 // ---- Admin: Delete Ingredient ----
@@ -660,9 +704,22 @@ export async function adminDeleteIngredient(id: string): Promise<{ success: bool
     await requireRole("admin");
     const supabase = await createClient();
     const { error } = await supabase.from("ingredients").delete().eq("id", id);
-    if (error) throw error;
+    if (error) {
+      if (error.code === "23503") {
+        throw new Error("Cannot delete this ingredient because it is part of a recipe or order. Try updating its details instead.");
+      }
+      throw error;
+    }
+    
+    revalidatePath("/");
+    revalidatePath("/cafe");
+    revalidatePath("/fridge");
+    revalidatePath("/dashboard/ingredients");
+    revalidatePath("/dashboard/products");
+    
     return { success: true };
-  } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : "Error" };
+  } catch (err: any) {
+    console.error("[Admin] Delete ingredient failed:", err);
+    return { success: false, error: err.message || "Error" };
   }
 }
