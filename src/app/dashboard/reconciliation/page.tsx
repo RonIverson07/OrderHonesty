@@ -196,6 +196,10 @@ export default function ReconciliationPage() {
     const actual = parseFloat(i.actualCount);
     return !isNaN(actual) && actual !== i.systemStock;
   });
+  const totalIngredientVariance = ingredientsWithCount.reduce((sum, i) => {
+    const actual = parseFloat(i.actualCount);
+    return sum + (isNaN(actual) ? 0 : actual - i.systemStock);
+  }, 0);
 
   // ---- Lifecycle Blockers Calculation ----
   const blockers: string[] = [];
@@ -800,6 +804,38 @@ export default function ReconciliationPage() {
       {/* ===== INGREDIENTS TAB ===== */}
       {activeTab === "ingredients" && (
         <>
+          {/* Ingredient Audit Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div className="card p-4">
+              <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Total Ingredients</p>
+              <p className="text-2xl font-bold text-gray-900">{ingredientItems.length}</p>
+              <p className="text-xs text-gray-400 mt-1">audit items</p>
+            </div>
+            <div className="card p-4">
+              <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Counted</p>
+              <p className="text-2xl font-bold text-blue-600">{ingredientsWithCount.length}</p>
+              <p className="text-xs text-gray-400 mt-1">of {ingredientItems.length} items</p>
+            </div>
+            <div className="card p-4">
+              <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Mismatches</p>
+              <p className={`text-2xl font-bold ${ingredientMismatches.length > 0 ? "text-red-600" : "text-emerald-600"}`}>
+                {ingredientMismatches.length}
+              </p>
+              <p className="text-xs text-gray-400 mt-1">
+                {ingredientMismatches.length > 0 ? `${ingredientMismatches.length} item${ingredientMismatches.length > 1 ? "s" : ""} need adjustment` : "all match ✓"}
+              </p>
+            </div>
+            <div className="card p-4">
+              <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Audit Variance</p>
+              <p className={`text-2xl font-bold ${totalIngredientVariance < 0 ? "text-red-600" : totalIngredientVariance > 0 ? "text-amber-600" : "text-emerald-600"}`}>
+                {totalIngredientVariance > 0 ? "+" : ""}{totalIngredientVariance}
+              </p>
+              <p className="text-xs text-gray-400 mt-1">
+                {totalIngredientVariance < 0 ? "raw materials short" : totalIngredientVariance > 0 ? "excess stock" : "balanced"}
+              </p>
+            </div>
+          </div>
+
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-lg font-semibold text-gray-900">🧪 Daily Ingredients Audit</h2>

@@ -216,7 +216,9 @@ export async function insertInventoryMovement(params: {
   new_stock?: number | null;
 }) {
   const supabase = await createClient();
-  const { error } = await supabase.from("inventory_movements").insert({
+  
+  // Standard insert object
+  const record: any = {
     item_type: params.item_type,
     item_id: params.item_id,
     quantity_delta: params.quantity_delta,
@@ -225,10 +227,31 @@ export async function insertInventoryMovement(params: {
     notes: params.notes ?? null,
     performed_by: params.performed_by ?? null,
     performed_at: new Date().toISOString(),
+  };
+
+  // V3 accountability columns
+  // If your DB doesn't have these, run: 
+  // ALTER TABLE inventory_movements ADD COLUMN IF NOT EXISTS previous_stock NUMERIC(12,4);
+  // ALTER TABLE inventory_movements ADD COLUMN IF NOT EXISTS new_stock NUMERIC(12,4);
+  
+  const { error } = await supabase.from("inventory_movements").insert({
+    ...record,
     previous_stock: params.previous_stock ?? null,
     new_stock: params.new_stock ?? null,
   });
-  if (error) throw error;
+
+  if (error) {
+    // PGRST204 is 'Column not found' - fallback to basic insert
+    if (error.code === 'PGRST204' || error.message.includes("previous_stock")) {
+      console.warn("[DB] previous_stock/new_stock columns missing in inventory_movements, falling back.");
+      const { error: fallbackError } = await supabase
+        .from("inventory_movements")
+        .insert(record);
+      if (fallbackError) throw fallbackError;
+      return;
+    }
+    throw error;
+  }
 }
 
 // ---- Adjust Stock ----

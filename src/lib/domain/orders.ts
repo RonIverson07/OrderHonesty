@@ -425,12 +425,18 @@ export async function markDayReconciled(
 
 // ---- Save Inventory Check (admin, V3: with performed_by + stock snapshots) ----
 
+// ---- Save Inventory Check (admin, V3: with performed_by + stock snapshots) ----
+
 export async function saveInventoryCheck(
   items: { productId: string; productName: string; systemStock: number; actualCount: number }[]
 ): Promise<{ success: boolean; adjusted: number; totalVariance: number; error?: string }> {
   try {
     const userId = await getCurrentUserId();
-    await requireRole("admin");
+    const isAuthorized = await checkRole("admin");
+    if (!isAuthorized) {
+      return { success: false, adjusted: 0, totalVariance: 0, error: "Unauthorized: Admin access required." };
+    }
+
     let adjusted = 0;
     let totalVariance = 0;
 
@@ -455,9 +461,16 @@ export async function saveInventoryCheck(
       });
     }
 
+    revalidatePath("/dashboard/reconciliation");
     return { success: true, adjusted, totalVariance };
-  } catch (err) {
-    return { success: false, adjusted: 0, totalVariance: 0, error: err instanceof Error ? err.message : "Error" };
+  } catch (err: any) {
+    console.error("[saveInventoryCheck] server error:", err);
+    let errorMsg = "Failed to save inventory audit";
+    if (err?.message) errorMsg = err.message;
+    else if (err?.error_description) errorMsg = err.error_description;
+    else if (typeof err === "object") errorMsg = JSON.stringify(err);
+    else if (err) errorMsg = String(err);
+    return { success: false, adjusted: 0, totalVariance: 0, error: errorMsg };
   }
 }
 
@@ -468,7 +481,11 @@ export async function saveIngredientCheck(
 ): Promise<{ success: boolean; adjusted: number; totalVariance: number; error?: string }> {
   try {
     const userId = await getCurrentUserId();
-    await requireRole("admin");
+    const isAuthorized = await checkRole("admin");
+    if (!isAuthorized) {
+      return { success: false, adjusted: 0, totalVariance: 0, error: "Unauthorized: Admin access required." };
+    }
+
     let adjusted = 0;
     let totalVariance = 0;
 
@@ -493,9 +510,16 @@ export async function saveIngredientCheck(
       });
     }
 
+    revalidatePath("/dashboard/reconciliation");
     return { success: true, adjusted, totalVariance };
-  } catch (err) {
-    return { success: false, adjusted: 0, totalVariance: 0, error: err instanceof Error ? err.message : "Error" };
+  } catch (err: any) {
+    console.error("[saveIngredientCheck] server error:", err);
+    let errorMsg = "Failed to save ingredient audit";
+    if (err?.message) errorMsg = err.message;
+    else if (err?.error_description) errorMsg = err.error_description;
+    else if (typeof err === "object") errorMsg = JSON.stringify(err);
+    else if (err) errorMsg = String(err);
+    return { success: false, adjusted: 0, totalVariance: 0, error: errorMsg };
   }
 }
 
