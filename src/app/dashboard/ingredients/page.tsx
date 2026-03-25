@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useTransition } from "react";
 import { createClient } from "@/lib/supabase/browser";
-import { adminSaveIngredient } from "@/lib/domain/orders";
+import { adminSaveIngredient, adminDeleteIngredient } from "@/lib/domain/orders";
 import type { Ingredient } from "@/lib/types";
 
 export default function IngredientsPage() {
@@ -33,6 +33,20 @@ export default function IngredientsPage() {
         setMessage("✅ Ingredient saved");
         setShowForm(false);
         setEditing(null);
+        await loadIngredients();
+        setTimeout(() => setMessage(""), 3000);
+      } else {
+        setMessage(`❌ ${result.error}`);
+      }
+    });
+  };
+
+  const handleDelete = (id: string, name: string) => {
+    if (!confirm(`Are you sure you want to delete ${name}?`)) return;
+    startTransition(async () => {
+      const result = await adminDeleteIngredient(id);
+      if (result.success) {
+        setMessage("✅ Ingredient deleted");
         await loadIngredients();
         setTimeout(() => setMessage(""), 3000);
       } else {
@@ -90,9 +104,14 @@ export default function IngredientsPage() {
                     </span>
                   </td>
                   <td className="py-3 px-4 text-right">
-                    <button onClick={() => { setEditing(i); setShowForm(true); }} className="text-sm text-amber-600 hover:text-amber-700 font-medium">
-                      Edit
-                    </button>
+                    <div className="flex justify-end gap-3">
+                      <button onClick={() => { setEditing(i); setShowForm(true); }} className="text-sm text-amber-600 hover:text-amber-700 font-medium">
+                        Edit
+                      </button>
+                      <button onClick={() => handleDelete(i.id, i.name)} className="text-sm text-red-600 hover:text-red-700 font-medium">
+                        Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
@@ -105,7 +124,7 @@ export default function IngredientsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
           <form onSubmit={handleSubmit} className="card p-6 w-full max-w-md mx-4 animate-slide-in">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              {editing ? `Edit ${editing.name}` : "New Ingredient"}
+              {editing ? `Edit ${editing?.name}` : "New Ingredient"}
             </h2>
             {editing && <input type="hidden" name="id" value={editing.id} />}
             <div className="space-y-3">

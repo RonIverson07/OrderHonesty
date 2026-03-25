@@ -8,15 +8,17 @@ import { submitOrder } from "@/lib/domain/orders";
 import { formatCurrency } from "@/lib/utils";
 import type { ProductWithStock, PaymentMethod } from "@/lib/types";
 
-const PAYMENT_OPTIONS: { value: PaymentMethod; label: string; icon: string }[] = [
+const ALL_PAYMENT_OPTIONS: { value: PaymentMethod; label: string; icon: string }[] = [
   { value: "cash", label: "Cash", icon: "💵" },
   { value: "gcash", label: "GCash", icon: "📱" },
+  { value: "qr_code", label: "QR Code", icon: "🔳" },
   { value: "bank_transfer", label: "Bank Transfer", icon: "🏦" },
   { value: "hitpay", label: "HitPay", icon: "💳" },
 ];
 
 export default function FridgePage() {
   const [products, setProducts] = useState<ProductWithStock[]>([]);
+  const [enabledPayments, setEnabledPayments] = useState<Record<string, boolean>>({ cash: true });
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [proofFile, setProofFile] = useState<File | null>(null);
@@ -33,19 +35,34 @@ export default function FridgePage() {
     async function load() {
       try {
         const supabase = createClient();
-        const { data, error } = await supabase
+        
+        // Load products
+        const { data: pData, error: pError } = await supabase
           .from("products")
           .select("*, retail_stock(*)")
           .eq("type", "retail")
           .eq("active", true)
           .order("name");
-        if (error) throw error;
+        if (pError) throw pError;
         setProducts(
-          (data ?? []).map((p: ProductWithStock & { retail_stock: unknown }) => ({
+          (pData ?? []).map((p: ProductWithStock & { retail_stock: unknown }) => ({
             ...p,
             retail_stock: Array.isArray(p.retail_stock) ? p.retail_stock[0] ?? null : p.retail_stock,
           }))
         );
+
+        // Load payment settings
+        const { data: sData } = await supabase
+          .from("system_settings")
+          .select("*")
+          .eq("key", "payment_methods_enabled")
+          .single();
+        if (sData?.value) {
+          setEnabledPayments(sData.value);
+          // Set default payment to the first enabled one
+          const firstEnabled = Object.keys(sData.value).find(k => sData.value[k]);
+          if (firstEnabled) setPaymentMethod(firstEnabled as PaymentMethod);
+        }
       } catch (err) {
         console.error("Error loading products:", err);
         setProducts([]);
@@ -193,7 +210,7 @@ export default function FridgePage() {
           <div className="mb-4">
             <label className="text-sm text-gray-500 mb-2 block">Payment Method</label>
             <div className="flex gap-2">
-              {PAYMENT_OPTIONS.map((opt) => (
+              {ALL_PAYMENT_OPTIONS.filter(opt => enabledPayments[opt.value]).map((opt) => (
                 <button
                   key={opt.value}
                   onClick={() => setPaymentMethod(opt.value)}

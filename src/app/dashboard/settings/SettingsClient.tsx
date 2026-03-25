@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/browser";
 import { setSetting, rollbackSetting } from "@/lib/domain/settings";
 import { timeAgo } from "@/lib/utils";
 
-const DEFAULT_PAYMENTS = { cash: true, gcash: true, bank_transfer: false, hitpay: false };
+const DEFAULT_PAYMENTS = { cash: true, gcash: true, bank_transfer: false, hitpay: false, qr_code: false };
 
 export default function SettingsClient({ initialSettings, envSettings: _env, auditLogs: _logs }: any) {
   const [isPending, startTransition] = useTransition();
@@ -161,7 +161,9 @@ export default function SettingsClient({ initialSettings, envSettings: _env, aud
                     onChange={(e) => setPayments({...payments, [method]: e.target.checked})}
                     className="w-4 h-4 text-amber-600 rounded focus:ring-amber-500"
                   />
-                  <span className="capitalize">{method.replace("_", " ")}</span>
+                  <span className="capitalize">
+                    {method === "gcash" ? "GCash" : method === "qr_code" ? "QR Code" : method.replace(/_/g, " ")}
+                  </span>
                 </label>
               ))}
             </div>

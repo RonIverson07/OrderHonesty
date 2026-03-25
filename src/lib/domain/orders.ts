@@ -40,7 +40,7 @@ const OrderItemSchema = z.object({
 const SubmitOrderSchema = z.object({
   items: z.array(OrderItemSchema).min(1),
   source: z.enum(["fridge", "cafe"]),
-  paymentMethod: z.enum(["cash", "gcash", "bank_transfer", "hitpay"]),
+  paymentMethod: z.enum(["cash", "gcash", "qr_code", "bank_transfer", "hitpay"]),
   paymentProofUrl: z.string().url().nullable().optional(),
   orderSnapshotUrl: z.string().url().nullable().optional(),
   notes: z.string().nullable().optional(),
@@ -648,6 +648,18 @@ export async function adminDeleteProduct(id: string): Promise<{ success: boolean
     await requireRole("admin");
     const supabase = await createClient();
     const { error } = await supabase.from("products").delete().eq("id", id);
+    if (error) throw error;
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : "Error" };
+  }
+}
+// ---- Admin: Delete Ingredient ----
+export async function adminDeleteIngredient(id: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    await requireRole("admin");
+    const supabase = await createClient();
+    const { error } = await supabase.from("ingredients").delete().eq("id", id);
     if (error) throw error;
     return { success: true };
   } catch (err) {

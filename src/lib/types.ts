@@ -7,7 +7,7 @@
 export type ProductType = "cafe" | "retail";
 export type OrderSource = "fridge" | "cafe";
 export type OrderStatus = "new" | "preparing" | "ready" | "completed" | "cancelled";
-export type PaymentMethod = "cash" | "gcash" | "bank_transfer" | "hitpay";
+export type PaymentMethod = "cash" | "gcash" | "qr_code" | "bank_transfer" | "hitpay";
 export type ProofStatus = "none" | "uploaded" | "confirmed" | "flagged";
 export type MovementType = "sale" | "restock" | "adjustment" | "spoilage";
 export type UserRole = "admin" | "barista";
