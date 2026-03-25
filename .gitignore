@@ -16,6 +16,9 @@
 # misc
 .DS_Store
 *.pem
+*.zip
+supabase_log.txt
+test-*.js
 
 # debug
 npm-debug.log*
