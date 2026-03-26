@@ -4,7 +4,7 @@ import { useState, useEffect, useTransition, useRef } from "react";
 import ProductCard from "@/components/ProductCard";
 import OrderSnapshot from "@/components/OrderSnapshot";
 import { createClient } from "@/lib/supabase/browser";
-import { submitOrder } from "@/lib/domain/orders";
+import { submitOrder, adminUploadFile } from "@/lib/domain/orders";
 import { formatCurrency } from "@/lib/utils";
 import type { ProductWithStock, PaymentMethod } from "@/lib/types";
 
@@ -115,18 +115,29 @@ export default function FridgePage() {
         const supabase = createClient();
 
         if (proofFile) {
-          const ext = proofFile.name.split(".").pop() ?? "jpg";
-          const fileName = `${crypto.randomUUID()}.${ext}`;
-          await supabase.storage.from("payment-proofs").upload(fileName, proofFile);
-          const { data: urlData } = supabase.storage.from("payment-proofs").getPublicUrl(fileName);
-          proofUrl = urlData.publicUrl;
+          const formData = new FormData();
+          formData.append("file", proofFile);
+          formData.append("bucket", "payment-proofs");
+          
+          const uploadRes = await adminUploadFile(formData);
+          if (uploadRes.success && uploadRes.url) {
+            proofUrl = uploadRes.url;
+          } else {
+            console.error("Proof upload failed:", uploadRes.error);
+          }
         }
-
+        
         if (blob) {
-          const fileName = `${crypto.randomUUID()}.jpg`;
-          await supabase.storage.from("order-snapshots").upload(fileName, blob);
-          const { data: urlData } = supabase.storage.from("order-snapshots").getPublicUrl(fileName);
-          snapshotUrl = urlData.publicUrl;
+          const formData = new FormData();
+          formData.append("file", new File([blob], "snapshot.jpg", { type: "image/jpeg" }));
+          formData.append("bucket", "order-snapshots");
+          
+          const uploadRes = await adminUploadFile(formData);
+          if (uploadRes.success && uploadRes.url) {
+            snapshotUrl = uploadRes.url;
+          } else {
+            console.error("Snapshot upload failed:", uploadRes.error);
+          }
         }
 
         const result = await submitOrder({

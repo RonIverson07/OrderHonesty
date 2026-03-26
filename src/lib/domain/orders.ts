@@ -56,6 +56,21 @@ export type SubmitOrderResult = {
   error?: string;
 };
 
+// ---- Submit Order (public) ----
+
+export async function adminUploadFile(formData: FormData): Promise<{ success: boolean; url?: string; error?: string }> {
+  try {
+    const file = formData.get("file") as File;
+    const bucket = formData.get("bucket") as string;
+    if (!file || !bucket) return { success: false, error: "Missing file or bucket" };
+    
+    const url = await uploadToStorage(bucket, file);
+    return { success: true, url };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Upload failed" };
+  }
+}
+
 // ---- Risk Flag Detection ----
 
 function detectRiskFlag(
