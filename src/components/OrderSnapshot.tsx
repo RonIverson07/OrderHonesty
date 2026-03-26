@@ -57,84 +57,47 @@ export default function OrderSnapshot({ onCapture, onSkip }: OrderSnapshotProps)
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
-    let cancelled = false;
 
     async function startCamera() {
+      // Check if camera API is available
       if (!navigator.mediaDevices?.getUserMedia) {
         setState("denied");
         return;
       }
 
-      // Try with facing mode first, fall back to any camera if that fails
-      let stream: MediaStream | null = null;
       try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user", width: 640, height: 480 },
           audio: false,
         });
-      } catch {
-        try {
-          // Fallback: request any camera (works better on some production environments)
-          stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-        } catch {
-          if (!cancelled) setState("denied");
-          return;
+        streamRef.current = stream;
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play();
         }
-      }
 
-      if (cancelled) {
-        stream.getTracks().forEach((t) => t.stop());
-        return;
-      }
+        setState("counting");
 
-      streamRef.current = stream;
-
-      const video = videoRef.current;
-      if (!video) {
-        setState("denied");
-        return;
-      }
-
-      video.srcObject = stream;
-      video.muted = true;
-
-      // Wait for the video to have real frame data before starting countdown
-      await new Promise<void>((resolve) => {
-        const onReady = () => {
-          video.removeEventListener("loadedmetadata", onReady);
-          resolve();
-        };
-        video.addEventListener("loadedmetadata", onReady);
-        // If already has metadata, resolve immediately
-        if (video.readyState >= 1) resolve();
-      });
-
-      try {
-        await video.play();
-      } catch {
-        // play() can throw on some browsers; ignore and continue
-      }
-
-      if (cancelled) return;
-
-      setState("counting");
-
-      let count = 5;
-      setCountdown(count);
-      timer = setInterval(() => {
-        count--;
+        // Start countdown
+        let count = 5;
         setCountdown(count);
-        if (count <= 0) {
-          clearInterval(timer);
-          capture();
-        }
-      }, 1000);
+        timer = setInterval(() => {
+          count--;
+          setCountdown(count);
+          if (count <= 0) {
+            clearInterval(timer);
+            capture();
+          }
+        }, 1000);
+      } catch {
+        setState("denied");
+      }
     }
 
     startCamera();
 
     return () => {
-      cancelled = true;
       clearInterval(timer);
       stopStream();
     };

@@ -93,6 +93,10 @@ export default function FridgePage() {
   // Step 1: User clicks submit → show snapshot
   const handleSubmitClick = () => {
     if (cartItems.length === 0) return;
+    if (!customerName.trim()) {
+      alert("Please enter your name to proceed.");
+      return;
+    }
     setStatus("snapshot");
   };
 
@@ -189,12 +193,12 @@ export default function FridgePage() {
 
               {/* V3: Customer Name */}
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Your Name / Seat (optional)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Your Name</label>
                 <input
                   type="text"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
-                  placeholder="e.g. Robi — Seat 3"
+                  placeholder="e.g. Robi"
                   className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"
                   maxLength={100}
                 />
