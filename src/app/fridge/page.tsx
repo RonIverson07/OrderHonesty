@@ -35,7 +35,7 @@ export default function FridgePage() {
     async function load() {
       try {
         const supabase = createClient();
-        
+
         // Load products
         const { data: pData, error: pError } = await supabase
           .from("products")
@@ -191,23 +191,23 @@ export default function FridgePage() {
               </div>
             ))}
 
-              {/* V3: Customer Name */}
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Your Name</label>
-                <input
-                  type="text"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  placeholder="e.g. Robi"
-                  className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"
-                  maxLength={100}
-                />
-              </div>
+            {/* V3: Customer Name */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Your Name</label>
+              <input
+                type="text"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                placeholder="e.g. Robi"
+                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"
+                maxLength={100}
+              />
+            </div>
 
-              <div className="pt-4 border-t border-gray-100 flex items-center justify-between mb-4">
-                <span className="text-base font-semibold text-gray-900">Total Selection</span>
-                <span className="text-xl font-bold text-amber-600">{formatCurrency(totalPrice)}</span>
-              </div>
+            <div className="pt-4 border-t border-gray-100 flex items-center justify-between mb-4">
+              <span className="text-base font-semibold text-gray-900">Total Selection</span>
+              <span className="text-xl font-bold text-amber-600">{formatCurrency(totalPrice)}</span>
+            </div>
           </div>
 
           {/* Payment Method */}
@@ -218,11 +218,10 @@ export default function FridgePage() {
                 <button
                   key={opt.value}
                   onClick={() => setPaymentMethod(opt.value)}
-                  className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-all border ${
-                    paymentMethod === opt.value
+                  className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-all border ${paymentMethod === opt.value
                       ? "bg-amber-50 border-amber-300 text-amber-700"
                       : "bg-white border-gray-200 text-gray-500 hover:bg-gray-50"
-                  }`}
+                    }`}
                 >
                   <span className="block text-lg mb-0.5">{opt.icon}</span>
                   {opt.label}
@@ -237,14 +236,15 @@ export default function FridgePage() {
                 <span className="text-lg">🔳</span> Scan to Pay (GCash)
               </p>
               <div className="w-full max-w-[350px] mx-auto bg-white rounded-lg p-2 shadow-sm border border-amber-100 overflow-hidden">
-                <img 
-                  src="/gcashqr.jpeg" 
-                  alt="GCash QR Code" 
+                <img
+                  src="/gcashqr.jpeg"
+                  alt="GCash QR Code"
                   className="w-full h-auto object-contain"
                 />
               </div>
-              <p className="text-[10px] text-amber-600 mt-2 text-center font-medium leading-tight">
-                Please scan and pay, then upload your <br/> screenshot below as proof of payment.
+              <p className="text-[11px] text-amber-700 mt-3 text-center font-medium leading-relaxed bg-amber-100/40 p-2.5 rounded-lg border border-amber-200/50 shadow-sm mx-1">
+                Get ready to take a fun selfie with your payment proof! 📸 <br/> 
+                After paying, click <strong className="text-amber-900 font-bold">Submit Order</strong> or message us your proof at <a href="https://www.facebook.com/StartupLabAI" target="_blank" rel="noopener noreferrer" className="underline font-bold text-amber-900 hover:text-amber-700 transition-colors">StartupLabAI</a> ✨
               </p>
             </div>
           )}

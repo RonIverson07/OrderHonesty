@@ -304,8 +304,9 @@ export default function CafePage() {
                   className="w-full h-full object-contain"
                 />
               </div>
-              <p className="text-[10px] text-amber-600 mt-2 text-center font-medium leading-tight">
-                Please scan and pay, then upload your <br /> screenshot below as proof of payment.
+              <p className="text-[11px] text-amber-700 mt-3 text-center font-medium leading-relaxed bg-amber-100/40 p-2.5 rounded-lg border border-amber-200/50 shadow-sm mx-1">
+                Get ready to take a fun selfie with your payment proof! 📸 <br/> 
+                After paying, click <strong className="text-amber-900 font-bold">Submit Order</strong> or message us your proof at <a href="https://www.facebook.com/StartupLabAI" target="_blank" rel="noopener noreferrer" className="underline font-bold text-amber-900 hover:text-amber-700 transition-colors">StartupLabAI</a> ✨
               </p>
             </div>
           )}
