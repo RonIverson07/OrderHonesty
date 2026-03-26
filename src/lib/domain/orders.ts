@@ -235,7 +235,8 @@ export async function submitOrder(input: SubmitOrderInput): Promise<SubmitOrderR
 
     try {
       if (order.source === "cafe") {
-        await sendNewOrderAlert(order.order_number, totalPrice);
+        const itemsList = cartItems.map(item => `${item.qty}x ${item.product.name}`).join(", ");
+        await sendNewOrderAlert(order.order_number, totalPrice, order.customer_name, order.order_snapshot_url, itemsList);
       }
     } catch (e) {
       console.warn("Alert failed (non-blocking):", e);
