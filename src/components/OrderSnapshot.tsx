@@ -146,35 +146,39 @@ export default function OrderSnapshot({ onCapture, onSkip }: OrderSnapshotProps)
         )}
 
         {state === "counting" && (
-          <>
-            <p className="text-sm text-gray-500 mb-3">
-              😊 Smile! Taking your order snapshot in...
-            </p>
-            <div className="relative rounded-xl overflow-hidden mb-3 bg-gray-100">
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="w-full rounded-xl mirror"
-                style={{ transform: "scaleX(-1)" }}
-              />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-6xl font-bold text-white drop-shadow-lg">
-                  {countdown}
-                </span>
-              </div>
+          <p className="text-sm text-gray-500 mb-3">
+            😊 Smile! Taking your order snapshot in...
+          </p>
+        )}
+
+        <div className={`relative rounded-xl overflow-hidden mb-3 bg-black ${state === "counting" ? "block" : "hidden"}`}>
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className="w-full rounded-xl mirror"
+            style={{ transform: "scaleX(-1)" }}
+          />
+          {state === "counting" && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-6xl font-bold text-white drop-shadow-lg">
+                {countdown}
+              </span>
             </div>
-            <button
-              onClick={() => {
-                stopStream();
-                onSkip();
-              }}
-              className="text-sm text-gray-400 hover:text-gray-600 underline"
-            >
-              Skip photo
-            </button>
-          </>
+          )}
+        </div>
+
+        {state === "counting" && (
+          <button
+            onClick={() => {
+              stopStream();
+              onSkip();
+            }}
+            className="text-sm text-gray-400 hover:text-gray-600 underline"
+          >
+            Skip photo
+          </button>
         )}
 
         {state === "captured" && previewUrl && (
