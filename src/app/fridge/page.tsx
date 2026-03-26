@@ -3,6 +3,7 @@
 import { useState, useEffect, useTransition, useRef } from "react";
 import ProductCard from "@/components/ProductCard";
 import OrderSnapshot from "@/components/OrderSnapshot";
+import Skeleton from "@/components/Skeleton";
 import { createClient } from "@/lib/supabase/browser";
 import { submitOrder, adminUploadFile } from "@/lib/domain/orders";
 import { formatCurrency } from "@/lib/utils";
@@ -29,10 +30,12 @@ export default function FridgePage() {
   const [successOrderNumber, setSuccessOrderNumber] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [customerName, setCustomerName] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
   const isSubmitting = useRef(false);
 
   useEffect(() => {
     async function load() {
+      setIsLoading(true);
       try {
         const supabase = createClient();
 
@@ -59,13 +62,16 @@ export default function FridgePage() {
           .single();
         if (sData?.value) {
           setEnabledPayments(sData.value);
-          // Set default payment to the first enabled one
-          const firstEnabled = Object.keys(sData.value).find(k => sData.value[k]);
-          if (firstEnabled) setPaymentMethod(firstEnabled as PaymentMethod);
+          const enabled: string[] = [];
+          Object.keys(sData.value).forEach((k) => {
+            if (sData.value[k]) enabled.push(k);
+          });
+          if (enabled.length > 0) setPaymentMethod(enabled[0] as PaymentMethod);
         }
       } catch (err) {
-        console.error("Error loading products:", err);
-        setProducts([]);
+        console.error("Failed to load products:", err);
+      } finally {
+        setIsLoading(false);
       }
     }
     load();
@@ -171,12 +177,31 @@ export default function FridgePage() {
   return (
     <div>
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-1">🧊 Fridge & Honesty Store</h1>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <span className="text-3xl">🧊</span> Fridge & Honesty Store
+        </h1>
         <p className="text-gray-500">Grab what you need, select your payment method, and go!</p>
       </div>
 
-      {/* Product Grid */}
+      {isLoading && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="card overflow-hidden">
+              <Skeleton className="aspect-[4/3] w-full" />
+              <div className="p-4 space-y-3">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-6 w-1/3" />
+                <div className="flex justify-between items-center pt-2">
+                  <Skeleton className="h-8 w-1/2 rounded-md" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!isLoading && (
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
         {products.filter(p => (p.retail_stock?.stock ?? 0) > 0).map((product) => (
           <ProductCard
@@ -188,6 +213,7 @@ export default function FridgePage() {
           />
         ))}
       </div>
+      )}
 
       {/* Cart Summary & Payment */}
       {cartItems.length > 0 && (
