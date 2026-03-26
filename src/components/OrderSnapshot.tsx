@@ -65,13 +65,29 @@ export default function OrderSnapshot({ onCapture, onSkip }: OrderSnapshotProps)
         return;
       }
 
+      let stream: MediaStream;
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "user", width: 640, height: 480 },
+        // Use ideal constraints, which are less strict than exact numbers
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
           audio: false,
         });
-        streamRef.current = stream;
+      } catch (err) {
+        // Fallback for strict production devices (mobile/tablets) that reject constraints
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false,
+          });
+        } catch {
+          setState("denied");
+          return;
+        }
+      }
+      
+      streamRef.current = stream;
 
+      try {
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           await videoRef.current.play();
