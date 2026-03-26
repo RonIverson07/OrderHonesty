@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { formatCurrency, getImageUrl } from "@/lib/utils";
 import type { ProductWithStock } from "@/lib/types";
 
@@ -20,6 +21,8 @@ export default function ProductCard({
   disabled = false,
   unavailableReason,
 }: ProductCardProps) {
+  const [isZoomed, setIsZoomed] = useState(false);
+  
   const stock = product.retail_stock?.stock ?? null;
   const isOutOfStock = showStock && stock !== null && stock <= 0;
   const isDisabled = disabled || isOutOfStock;
@@ -31,14 +34,27 @@ export default function ProductCard({
         isDisabled ? "opacity-60" : ""
       }`}
     >
-      {/* Image */}
-      <div className="aspect-[4/3] bg-gradient-to-br from-amber-50 to-orange-50 relative overflow-hidden">
+      {/* Image Container with Zoom Affordance */}
+      <div 
+        className={`aspect-[4/3] bg-gradient-to-br from-amber-50 to-orange-50 relative overflow-hidden ${product.image_url ? "cursor-zoom-in group" : ""}`}
+        onClick={() => {
+          if (product.image_url) setIsZoomed(true);
+        }}
+      >
         {product.image_url ? (
-          <img
-            src={getImageUrl(product.image_url) ?? ""}
-            alt={product.name}
-            className="w-full h-full object-cover"
-          />
+          <>
+            <img
+              src={getImageUrl(product.image_url) ?? ""}
+              alt={product.name}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+            {/* Hover overlay hint */}
+            <div className="absolute inset-0 bg-black/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="bg-white/90 text-gray-800 p-2 rounded-full shadow-md text-xl">
+                🔍
+              </span>
+            </div>
+          </>
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <span className="text-4xl opacity-40">
@@ -113,6 +129,29 @@ export default function ProductCard({
           )}
         </div>
       </div>
+
+      {/* Floating Zoom Modal */}
+      {isZoomed && product.image_url && (
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in"
+          onClick={(e) => { e.stopPropagation(); setIsZoomed(false); }}
+        >
+          <div className="relative max-w-3xl max-h-[90vh] w-full flex items-center justify-center">
+            <button 
+              className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors"
+              onClick={(e) => { e.stopPropagation(); setIsZoomed(false); }}
+            >
+              <span className="text-sm font-medium tracking-wider uppercase bg-white/20 hover:bg-white/30 transition px-4 py-1.5 rounded-full">✕ Close</span>
+            </button>
+            <img 
+              src={getImageUrl(product.image_url) ?? ""} 
+              alt={product.name} 
+              className="w-full h-auto max-h-[85vh] object-contain rounded-xl shadow-2xl scale-100 animate-in zoom-in-95 duration-200"
+              onClick={(e) => e.stopPropagation()} 
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

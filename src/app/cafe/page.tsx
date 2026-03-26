@@ -29,6 +29,7 @@ export default function CafePage() {
   const [errorMsg, setErrorMsg] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [zoomImage, setZoomImage] = useState<{ url: string; title: string } | null>(null);
   const isSubmitting = useRef(false);
 
   useEffect(() => {
@@ -234,10 +235,28 @@ export default function CafePage() {
               key={product.id}
               className={`card overflow-hidden animate-slide-in ${isUnavailable ? "opacity-60" : ""}`}
             >
-              {/* Image */}
-              <div className="aspect-[4/3] bg-gradient-to-br from-amber-50 to-orange-50 relative">
+              {/* Image Container with Zoom Affordance */}
+              <div 
+                className={`aspect-[4/3] bg-gradient-to-br from-amber-50 to-orange-50 relative group ${product.image_url && !isUnavailable ? "cursor-zoom-in" : ""}`}
+                onClick={() => {
+                  if (product.image_url && !isUnavailable) {
+                    setZoomImage({ url: product.image_url, title: product.name });
+                  }
+                }}
+              >
                 {product.image_url ? (
-                  <img src={getImageUrl(product.image_url) ?? ""} alt={product.name} className="w-full h-full object-cover" />
+                  <>
+                    <img 
+                      src={getImageUrl(product.image_url) ?? ""} 
+                      alt={product.name} 
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                    />
+                    {!isUnavailable && (
+                      <div className="absolute inset-0 bg-black/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="bg-white/90 text-gray-800 p-2 rounded-full shadow-md text-xl">🔍</span>
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <span className="text-4xl opacity-40">☕</span>
@@ -411,6 +430,29 @@ export default function CafePage() {
         <div className="mt-6 p-4 rounded-xl bg-red-50 border border-red-200 text-center animate-slide-in">
           <p className="text-red-700">❌ {errorMsg}</p>
           <button onClick={() => setStatus("idle")} className="mt-2 text-sm text-red-600 underline">Dismiss</button>
+        </div>
+      )}
+
+      {/* Floating Zoom Modal */}
+      {zoomImage && (
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in"
+          onClick={(e) => { e.stopPropagation(); setZoomImage(null); }}
+        >
+          <div className="relative max-w-3xl max-h-[90vh] w-full flex items-center justify-center">
+            <button 
+              className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors"
+              onClick={(e) => { e.stopPropagation(); setZoomImage(null); }}
+            >
+              <span className="text-sm font-medium tracking-wider uppercase bg-white/20 hover:bg-white/30 transition px-4 py-1.5 rounded-full">✕ Close</span>
+            </button>
+            <img 
+              src={getImageUrl(zoomImage.url) ?? ""} 
+              alt={zoomImage.title} 
+              className="w-full h-auto max-h-[85vh] object-contain rounded-xl shadow-2xl scale-100 animate-in zoom-in-95 duration-200"
+              onClick={(e) => e.stopPropagation()} 
+            />
+          </div>
         </div>
       )}
     </div>
