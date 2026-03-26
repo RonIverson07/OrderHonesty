@@ -25,6 +25,8 @@ export default function DashboardPage() {
   const [isDemo, setIsDemo] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
+  const [zoomImage, setZoomImage] = useState<string | null>(null);
+  const [viewItemsOrder, setViewItemsOrder] = useState<OrderWithItems | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -317,8 +319,18 @@ export default function DashboardPage() {
                               <span className="font-semibold text-amber-600 text-sm">{order.order_number || `#${order.id.slice(0, 8)}`}</span>
                               <span className="text-xs text-gray-400 ml-1.5">{timeAgo(order.created_at)}</span>
                             </td>
-                            <td className="py-3 px-4 text-gray-600 max-w-[180px] truncate">
-                              {order.order_items.map((i) => `${i.qty}× ${i.products.name}`).join(", ")}
+                            <td className="py-3 px-4 text-gray-600 max-w-[180px]">
+                              <div className="truncate mb-1">
+                                {order.order_items.map((i) => `${i.qty}× ${i.products?.name}`).join(", ")}
+                              </div>
+                              {order.order_items.length > 1 && (
+                                <button
+                                  onClick={() => setViewItemsOrder(order)}
+                                  className="text-[10px] uppercase tracking-wider font-semibold text-amber-600 hover:text-amber-800 transition-colors"
+                                >
+                                  View all ({order.order_items.length} items)
+                                </button>
+                              )}
                             </td>
                             <td className="py-3 px-4"><OrderStatusBadge status={order.status} /></td>
                             <td className="py-3 px-4 text-center">
@@ -408,6 +420,71 @@ export default function DashboardPage() {
             </div>
           </div>
         </>
+      )}
+
+      {/* Image Zoom Modal */}
+      {zoomImage && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in"
+          onClick={() => setZoomImage(null)}
+        >
+          <div className="relative max-w-3xl max-h-[90vh] w-full flex items-center justify-center">
+            <button 
+              className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors"
+              onClick={() => setZoomImage(null)}
+            >
+              <span className="text-sm font-medium tracking-wider uppercase bg-white/20 px-4 py-1.5 rounded-full">Close</span>
+            </button>
+            <img 
+              src={zoomImage} 
+              alt="Order Snapshot Zoom" 
+              className="w-full h-auto max-h-[85vh] object-contain rounded-xl shadow-2xl"
+              onClick={(e) => e.stopPropagation()} 
+            />
+          </div>
+        </div>
+      )}
+
+      {/* View All Items Modal */}
+      {viewItemsOrder && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in"
+          onClick={() => setViewItemsOrder(null)}
+        >
+          <div 
+            className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden animate-slide-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-gray-900 leading-tight">Order Receipt</h3>
+                <p className="text-xs text-gray-500">{viewItemsOrder.order_number || `#${viewItemsOrder.id.slice(0, 8)}`}</p>
+              </div>
+              <button onClick={() => setViewItemsOrder(null)} className="text-gray-400 hover:text-gray-600 p-2 -mr-2">✕</button>
+            </div>
+            
+            <div className="p-6 max-h-[60vh] overflow-y-auto">
+              <ul className="space-y-4">
+                {viewItemsOrder.order_items.map((item) => (
+                  <li key={item.id} className="flex justify-between items-start text-sm">
+                    <span className="font-medium text-gray-900">
+                      <span className="text-amber-600 font-bold mr-2">{item.qty}×</span>
+                      {item.products?.name || "Unknown Product"}
+                    </span>
+                    <span className="text-gray-500 tabular-nums">
+                      {formatCurrency(item.qty * (item.price_at_sale || 0))}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              
+              <div className="mt-6 pt-4 border-t border-gray-100 flex justify-between items-center text-base">
+                <span className="font-bold text-gray-500">Total</span>
+                <span className="font-black text-gray-900">{formatCurrency(viewItemsOrder.total_price)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
