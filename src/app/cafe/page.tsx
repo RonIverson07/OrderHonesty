@@ -59,10 +59,10 @@ export default function CafePage() {
             if (myRecipes.length === 0) {
               const rStockVal = Array.isArray(product.retail_stock) ? product.retail_stock[0]?.stock : product.retail_stock?.stock;
               const directStock = rStockVal ?? 0;
-              return { 
-                ...product, 
-                available: directStock > 0, 
-                max_servings: directStock 
+              return {
+                ...product,
+                available: directStock > 0,
+                max_servings: directStock
               };
             }
 
@@ -150,7 +150,7 @@ export default function CafePage() {
           const formData = new FormData();
           formData.append("file", new File([blob], "snapshot.jpg", { type: "image/jpeg" }));
           formData.append("bucket", "order-snapshots");
-          
+
           const uploadRes = await adminUploadFile(formData);
           if (uploadRes.success && uploadRes.url) {
             snapshotUrl = uploadRes.url;
@@ -163,7 +163,7 @@ export default function CafePage() {
           const formData = new FormData();
           formData.append("file", proofFile);
           formData.append("bucket", "payment-proofs");
-          
+
           const uploadRes = await adminUploadFile(formData);
           if (uploadRes.success && uploadRes.url) {
             proofUrl = uploadRes.url;
@@ -227,86 +227,86 @@ export default function CafePage() {
 
       {/* Product Grid */}
       {!isLoading && (
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
-        {products.filter(p => p.available && (p.max_servings === undefined || p.max_servings > 0)).map((product) => {
-          const isUnavailable = !product.available;
-          return (
-            <div
-              key={product.id}
-              className={`card overflow-hidden animate-slide-in ${isUnavailable ? "opacity-60" : ""}`}
-            >
-              {/* Image Container with Zoom Affordance */}
-              <div 
-                className={`aspect-[4/3] bg-gradient-to-br from-amber-50 to-orange-50 relative group ${product.image_url && !isUnavailable ? "cursor-zoom-in" : ""}`}
-                onClick={() => {
-                  if (product.image_url && !isUnavailable) {
-                    setZoomImage({ url: product.image_url, title: product.name });
-                  }
-                }}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
+          {products.filter(p => p.available && (p.max_servings === undefined || p.max_servings > 0)).map((product) => {
+            const isUnavailable = !product.available;
+            return (
+              <div
+                key={product.id}
+                className={`card overflow-hidden animate-slide-in ${isUnavailable ? "opacity-60" : ""}`}
               >
-                {product.image_url ? (
-                  <>
-                    <img 
-                      src={getImageUrl(product.image_url) ?? ""} 
-                      alt={product.name} 
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                    />
-                    {!isUnavailable && (
-                      <div className="absolute inset-0 bg-black/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <span className="bg-white/90 text-gray-800 p-2 rounded-full shadow-md text-xl">🔍</span>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <span className="text-4xl opacity-40">☕</span>
-                  </div>
-                )}
-                {isUnavailable && (
-                  <div className="absolute top-2 right-2 px-2 py-1 rounded-full bg-red-500 text-white text-xs font-semibold">
-                    Unavailable
-                  </div>
-                )}
-                {product.available && product.max_servings !== undefined && product.max_servings <= 5 && product.max_servings > 0 && (
-                  <div className="absolute top-2 right-2 px-2 py-1 rounded-full bg-amber-500 text-white text-xs font-semibold">
-                    {product.max_servings} left
-                  </div>
-                )}
-              </div>
-
-              {/* Content */}
-              <div className="p-4">
-                <h3 className="text-sm font-semibold text-gray-900 mb-0.5">{product.name}</h3>
-                {isUnavailable && product.unavailable_reason && (
-                  <p className="text-xs text-red-500 mb-1">{product.unavailable_reason}</p>
-                )}
-                <p className="text-lg font-bold text-amber-600 mb-3">{formatCurrency(product.selling_price)}</p>
-
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 bg-gray-100 rounded-lg p-1">
-                    <button
-                      onClick={() => setQty(product.id, Math.max(0, (quantities[product.id] ?? 0) - 1))}
-                      className="w-8 h-8 flex items-center justify-center rounded-md text-gray-500 hover:bg-white hover:shadow-sm transition-all disabled:opacity-30"
-                      disabled={(quantities[product.id] ?? 0) === 0 || isUnavailable}
-                    >−</button>
-                    <span className="w-8 text-center text-sm font-semibold tabular-nums">{quantities[product.id] ?? 0}</span>
-                    <button
-                      onClick={() => setQty(product.id, (quantities[product.id] ?? 0) + 1)}
-                      className="w-8 h-8 flex items-center justify-center rounded-md text-gray-500 hover:bg-white hover:shadow-sm transition-all disabled:opacity-30"
-                      disabled={isUnavailable}
-                    >+</button>
-                  </div>
-                  {(quantities[product.id] ?? 0) > 0 && (
-                    <span className="text-sm font-semibold text-amber-600">
-                      {formatCurrency(product.selling_price * (quantities[product.id] ?? 0))}
-                    </span>
+                {/* Image Container with Zoom Affordance */}
+                <div
+                  className={`aspect-[4/3] bg-gradient-to-br from-amber-50 to-orange-50 relative group ${product.image_url && !isUnavailable ? "cursor-zoom-in" : ""}`}
+                  onClick={() => {
+                    if (product.image_url && !isUnavailable) {
+                      setZoomImage({ url: product.image_url, title: product.name });
+                    }
+                  }}
+                >
+                  {product.image_url ? (
+                    <>
+                      <img
+                        src={getImageUrl(product.image_url) ?? ""}
+                        alt={product.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                      {!isUnavailable && (
+                        <div className="absolute inset-0 bg-black/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <span className="bg-white/90 text-gray-800 p-2 rounded-full shadow-md text-xl">🔍</span>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <span className="text-4xl opacity-40">☕</span>
+                    </div>
+                  )}
+                  {isUnavailable && (
+                    <div className="absolute top-2 right-2 px-2 py-1 rounded-full bg-red-500 text-white text-xs font-semibold">
+                      Unavailable
+                    </div>
+                  )}
+                  {product.available && product.max_servings !== undefined && product.max_servings <= 5 && product.max_servings > 0 && (
+                    <div className="absolute top-2 right-2 px-2 py-1 rounded-full bg-amber-500 text-white text-xs font-semibold">
+                      {product.max_servings} left
+                    </div>
                   )}
                 </div>
+
+                {/* Content */}
+                <div className="p-4">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-0.5">{product.name}</h3>
+                  {isUnavailable && product.unavailable_reason && (
+                    <p className="text-xs text-red-500 mb-1">{product.unavailable_reason}</p>
+                  )}
+                  <p className="text-lg font-bold text-amber-600 mb-3">{formatCurrency(product.selling_price)}</p>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 bg-gray-100 rounded-lg p-1">
+                      <button
+                        onClick={() => setQty(product.id, Math.max(0, (quantities[product.id] ?? 0) - 1))}
+                        className="w-8 h-8 flex items-center justify-center rounded-md text-gray-500 hover:bg-white hover:shadow-sm transition-all disabled:opacity-30"
+                        disabled={(quantities[product.id] ?? 0) === 0 || isUnavailable}
+                      >−</button>
+                      <span className="w-8 text-center text-sm font-semibold tabular-nums">{quantities[product.id] ?? 0}</span>
+                      <button
+                        onClick={() => setQty(product.id, (quantities[product.id] ?? 0) + 1)}
+                        className="w-8 h-8 flex items-center justify-center rounded-md text-gray-500 hover:bg-white hover:shadow-sm transition-all disabled:opacity-30"
+                        disabled={isUnavailable}
+                      >+</button>
+                    </div>
+                    {(quantities[product.id] ?? 0) > 0 && (
+                      <span className="text-sm font-semibold text-amber-600">
+                        {formatCurrency(product.selling_price * (quantities[product.id] ?? 0))}
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
       )}
 
       {/* Cart & Submit */}
@@ -371,8 +371,18 @@ export default function CafePage() {
                 />
               </div>
               <p className="text-[11px] text-amber-700 mt-3 text-center font-medium leading-relaxed bg-amber-100/40 p-2.5 rounded-lg border border-amber-200/50 shadow-sm mx-1">
-                Get ready to take a fun selfie with your payment proof! 📸 <br/> 
+                Get ready to take a fun selfie with your payment proof! 📸 <br />
                 After paying, click <strong className="text-amber-900 font-bold">Submit Order</strong> or message us your proof at <a href="https://www.facebook.com/StartupLabAI" target="_blank" rel="noopener noreferrer" className="underline font-bold text-amber-900 hover:text-amber-700 transition-colors">StartupLabAI</a> ✨
+              </p>
+            </div>
+          )}
+
+          {/* Cash Camera Workflow Message */}
+          {paymentMethod === "cash" && (
+            <div className="mb-4 p-3.5 rounded-xl bg-gradient-to-br from-amber-50 to-orange-50/30 border border-amber-200/60 shadow-sm animate-slide-in">
+              <p className="text-[11.5px] text-amber-800 text-center font-medium leading-relaxed">
+                Please be honest and hold your cash next to the items you are purchasing. <br/>
+                When you click <strong className="text-amber-900 font-bold uppercase tracking-wide">Submit Order</strong>, the camera will instantly open for a quick verification selfie! 📸
               </p>
             </div>
           )}
@@ -435,22 +445,22 @@ export default function CafePage() {
 
       {/* Floating Zoom Modal */}
       {zoomImage && (
-        <div 
+        <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in"
           onClick={(e) => { e.stopPropagation(); setZoomImage(null); }}
         >
           <div className="relative max-w-3xl max-h-[90vh] w-full flex items-center justify-center">
-            <button 
+            <button
               className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors"
               onClick={(e) => { e.stopPropagation(); setZoomImage(null); }}
             >
               <span className="text-sm font-medium tracking-wider uppercase bg-white/20 hover:bg-white/30 transition px-4 py-1.5 rounded-full">✕ Close</span>
             </button>
-            <img 
-              src={getImageUrl(zoomImage.url) ?? ""} 
-              alt={zoomImage.title} 
+            <img
+              src={getImageUrl(zoomImage.url) ?? ""}
+              alt={zoomImage.title}
               className="w-full h-auto max-h-[85vh] object-contain rounded-xl shadow-2xl scale-100 animate-in zoom-in-95 duration-200"
-              onClick={(e) => e.stopPropagation()} 
+              onClick={(e) => e.stopPropagation()}
             />
           </div>
         </div>

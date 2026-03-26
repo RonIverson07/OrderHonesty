@@ -124,7 +124,7 @@ export default function FridgePage() {
           const formData = new FormData();
           formData.append("file", proofFile);
           formData.append("bucket", "payment-proofs");
-          
+
           const uploadRes = await adminUploadFile(formData);
           if (uploadRes.success && uploadRes.url) {
             proofUrl = uploadRes.url;
@@ -132,12 +132,12 @@ export default function FridgePage() {
             console.error("Proof upload failed:", uploadRes.error);
           }
         }
-        
+
         if (blob) {
           const formData = new FormData();
           formData.append("file", new File([blob], "snapshot.jpg", { type: "image/jpeg" }));
           formData.append("bucket", "order-snapshots");
-          
+
           const uploadRes = await adminUploadFile(formData);
           if (uploadRes.success && uploadRes.url) {
             snapshotUrl = uploadRes.url;
@@ -202,17 +202,17 @@ export default function FridgePage() {
       )}
 
       {!isLoading && (
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
-        {products.filter(p => (p.retail_stock?.stock ?? 0) > 0).map((product) => (
-          <ProductCard
-            key={product.id}
-            product={product}
-            qty={quantities[product.id] ?? 0}
-            onQtyChange={(q) => setQty(product.id, q)}
-            showStock
-          />
-        ))}
-      </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
+          {products.filter(p => (p.retail_stock?.stock ?? 0) > 0).map((product) => (
+            <ProductCard
+              key={product.id}
+              product={product}
+              qty={quantities[product.id] ?? 0}
+              onQtyChange={(q) => setQty(product.id, q)}
+              showStock
+            />
+          ))}
+        </div>
       )}
 
       {/* Cart Summary & Payment */}
@@ -256,8 +256,8 @@ export default function FridgePage() {
                   key={opt.value}
                   onClick={() => setPaymentMethod(opt.value)}
                   className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-all border ${paymentMethod === opt.value
-                      ? "bg-amber-50 border-amber-300 text-amber-700"
-                      : "bg-white border-gray-200 text-gray-500 hover:bg-gray-50"
+                    ? "bg-amber-50 border-amber-300 text-amber-700"
+                    : "bg-white border-gray-200 text-gray-500 hover:bg-gray-50"
                     }`}
                 >
                   <span className="block text-lg mb-0.5">{opt.icon}</span>
@@ -280,8 +280,18 @@ export default function FridgePage() {
                 />
               </div>
               <p className="text-[11px] text-amber-700 mt-3 text-center font-medium leading-relaxed bg-amber-100/40 p-2.5 rounded-lg border border-amber-200/50 shadow-sm mx-1">
-                Get ready to take a fun selfie with your payment proof! 📸 <br/> 
+                Get ready to take a fun selfie with your payment proof! 📸 <br />
                 After paying, click <strong className="text-amber-900 font-bold">Submit Order</strong> or message us your proof at <a href="https://www.facebook.com/StartupLabAI" target="_blank" rel="noopener noreferrer" className="underline font-bold text-amber-900 hover:text-amber-700 transition-colors">StartupLabAI</a> ✨
+              </p>
+            </div>
+          )}
+
+          {/* Cash Camera Workflow Message */}
+          {paymentMethod === "cash" && (
+            <div className="mb-4 p-3.5 rounded-xl bg-gradient-to-br from-amber-50 to-orange-50/30 border border-amber-200/60 shadow-sm animate-slide-in">
+              <p className="text-[11.5px] text-amber-800 text-center font-medium leading-relaxed">
+                Please be honest and hold your cash next to the items you took from the fridge. <br/>
+                When you click <strong className="text-amber-900 font-bold uppercase tracking-wide">Submit Order</strong>, the camera will instantly open for a quick verification selfie! 📸
               </p>
             </div>
           )}

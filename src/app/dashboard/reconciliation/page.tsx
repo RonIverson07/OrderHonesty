@@ -728,10 +728,10 @@ export default function ReconciliationPage() {
                           onChange={(e) => updateActualCount(item.id, e.target.value)}
                           placeholder="—"
                           className={`input text-center w-full tabular-nums ${isMismatch
-                              ? isSevere
-                                ? "!border-red-300 !ring-red-100"
-                                : "!border-amber-300 !ring-amber-100"
-                              : ""
+                            ? isSevere
+                              ? "!border-red-300 !ring-red-100"
+                              : "!border-amber-300 !ring-amber-100"
+                            : ""
                             }`}
                         />
                       </td>
