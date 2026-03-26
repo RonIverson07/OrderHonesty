@@ -71,7 +71,7 @@ export default function SettingsClient({ initialSettings, envSettings: _env, aud
       try {
         await setSetting("low_stock_threshold", Number(threshold));
         await setSetting("admin_email", email);
-        setStatusMsg({ type: "success", text: "Operational settings saved." });
+        setStatusMsg({ type: "success", text: "Operational settings and email saved." });
       } catch (e: any) {
         setStatusMsg({ type: "error", text: e.message });
       }

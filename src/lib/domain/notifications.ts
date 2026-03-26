@@ -76,7 +76,7 @@ async function sendEmail(to: string, subject: string, htmlHtml: string, type: No
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "LaBrew System <noreply@labrew.app>", // Assumes a verified domain exists, or gracefully fails via API response
+        from: "LaBrew System <onboarding@resend.dev>", // Uses Resend's default onboarding email so you don't have to buy a domain name!
         to,
         subject,
         html: htmlHtml,

@@ -22,7 +22,10 @@ export async function processStockDeduction(
   const globalThreshold = await getSetting("low_stock_threshold", 10);
   const supabase = await createClient();
   for (const item of items) {
-    if (item.product.type === "retail") {
+    const productRecipes = recipes.filter((r) => r.product_id === item.product.id);
+
+    // If it's a retail item, OR if it's a cafe item with no recipes linked yet, deduct its own direct stock.
+    if (item.product.type === "retail" || productRecipes.length === 0) {
       // Validate & deduct retail stock
       const result = await validateAndDeductRetailStock(
         item.product.id,
@@ -47,15 +50,12 @@ export async function processStockDeduction(
 
       // Check low stock
       const { data: stockRow } = await supabase.from("retail_stock").select("stock").eq("product_id", item.product.id).single();
-      if (stockRow && stockRow.stock <= globalThreshold!) {
-        await sendLowStockAlert(item.product.id, item.product.name, stockRow.stock, globalThreshold!);
+      const threshold = item.product.low_stock_threshold ?? globalThreshold!;
+      if (stockRow && stockRow.stock <= threshold) {
+        await sendLowStockAlert(item.product.id, item.product.name, stockRow.stock, threshold);
       }
     } else {
       // Café product: validate & deduct each ingredient per recipe
-      const productRecipes = recipes.filter(
-        (r) => r.product_id === item.product.id
-      );
-
       for (const recipe of productRecipes) {
         const totalDeduction = recipe.qty_required * item.qty;
 
@@ -81,8 +81,9 @@ export async function processStockDeduction(
 
         // Check low stock
         const { data: ingRow } = await supabase.from("ingredients").select("stock").eq("id", recipe.ingredient_id).single();
-        if (ingRow && ingRow.stock <= globalThreshold!) {
-          await sendLowStockAlert(recipe.ingredient_id, recipe.ingredients.name, ingRow.stock, globalThreshold!);
+        const ingThreshold = (recipe.ingredients as any)?.low_stock_threshold ?? globalThreshold!;
+        if (ingRow && ingRow.stock <= ingThreshold) {
+          await sendLowStockAlert(recipe.ingredient_id, recipe.ingredients.name, ingRow.stock, ingThreshold);
         }
       }
     }

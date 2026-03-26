@@ -162,6 +162,7 @@ export default function ProductsPage() {
               <th className="text-right py-3 px-4 font-medium text-gray-500">Cost</th>
               <th className="text-center py-3 px-4 font-medium text-gray-500">Status</th>
               <th className="text-right py-3 px-4 font-medium text-gray-500">Stock</th>
+              <th className="text-right py-3 px-4 font-medium text-gray-500">Threshold</th>
               <th className="text-right py-3 px-4 font-medium text-gray-500">Actions</th>
             </tr>
           </thead>
@@ -200,6 +201,9 @@ export default function ProductsPage() {
                 </td>
                 <td className="py-3 px-4 text-right text-gray-900 font-medium">
                   {p.retail_stock?.stock ?? 0}
+                </td>
+                <td className="py-3 px-4 text-right text-amber-600 font-medium">
+                  {p.low_stock_threshold ?? 0}
                 </td>
                 <td className="py-3 px-4 text-right">
                   <div className="flex justify-end gap-3">
