@@ -3,7 +3,7 @@
 import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/browser";
-import { createStaffAccount } from "@/lib/domain/users";
+import { createStaffAccount, deleteStaffAccount, syncStaffEmails } from "@/lib/domain/users"; // syncStaffEmails used internally on load
 import { timeAgo } from "@/lib/utils";
 import type { Profile } from "@/lib/types";
 
@@ -11,28 +11,61 @@ import type { Profile } from "@/lib/types";
 export default function UsersClient({ initialProfiles }: { initialProfiles: Profile[] }) {
   const [profiles, setProfiles] = useState<Profile[]>(initialProfiles);
   const [loading, setLoading] = useState(initialProfiles.length === 0);
+  const [currentUser, setCurrentUser] = useState<Profile | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
-    async function fetchProfiles() {
+    async function load() {
       try {
         const supabase = createClient();
-        const { data } = await supabase
-          .from("profiles")
-          .select("*")
-          .order("created_at", { ascending: false });
-        if (data) setProfiles(data as Profile[]);
+        const [{ data: { user } }, { data: list }] = await Promise.all([
+          supabase.auth.getUser(),
+          supabase.from("profiles").select("*").order("created_at", { ascending: false })
+        ]);
+
+        if (list) setProfiles(list as Profile[]);
+        if (user) {
+          const profile = list?.find(p => p.id === user.id);
+          if (profile) setCurrentUser(profile as Profile);
+        }
+
+        // Auto-sync emails silently on every load so emails are always up to date
+        syncStaffEmails().catch(() => {/* silent — email column may not exist yet */});
       } catch (e) {
         console.error("Failed to load profiles:", e);
       } finally {
         setLoading(false);
       }
     }
-    fetchProfiles();
+    load();
   }, []);
+
+  const handleDelete = (userId: string) => {
+    if (!confirm("Are you sure you want to delete this staff account? This action cannot be undone.")) return;
+
+    setIsDeleting(userId);
+    setError(null);
+    setSuccess(null);
+
+    startTransition(async () => {
+      const result = await deleteStaffAccount(userId);
+      if (result.success) {
+        setProfiles(p => p.filter(prof => prof.id !== userId));
+        setSuccess("Staff account successfully deleted.");
+        router.refresh();
+      } else {
+        setError(result.error || "Failed to delete account.");
+      }
+      setIsDeleting(null);
+    });
+  };
+
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
@@ -46,6 +79,11 @@ export default function UsersClient({ initialProfiles }: { initialProfiles: Prof
         router.refresh();
         setSuccess("Account successfully created!");
         formEl.reset();
+
+        // Refresh local list
+        const supabase = createClient();
+        const { data } = await supabase.from("profiles").select("*").order("created_at", { ascending: false });
+        if (data) setProfiles(data as Profile[]);
       } else {
         setError(result.error || "Failed to create account.");
       }
@@ -80,30 +118,30 @@ export default function UsersClient({ initialProfiles }: { initialProfiles: Prof
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-              <input 
-                type="email" 
-                name="email" 
-                required 
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-amber-500 focus:border-amber-500" 
+              <input
+                type="email"
+                name="email"
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-amber-500 focus:border-amber-500"
                 placeholder="barista@labrew.local"
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Temporary Password</label>
-              <input 
-                type="password" 
-                name="password" 
-                required 
+              <input
+                type="password"
+                name="password"
+                required
                 minLength={6}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-amber-500 focus:border-amber-500" 
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-amber-500 focus:border-amber-500"
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-              <select 
-                name="role" 
+              <select
+                name="role"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:ring-amber-500 focus:border-amber-500"
               >
                 <option value="barista">Barista (Queue & Prep)</option>
@@ -137,28 +175,46 @@ export default function UsersClient({ initialProfiles }: { initialProfiles: Prof
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-100 text-left bg-gray-50/50">
-                    <th className="py-3 px-5 font-medium text-gray-500">User ID</th>
+                    <th className="py-3 px-5 font-medium text-gray-500">Email Address</th>
                     <th className="py-3 px-5 font-medium text-gray-500">Role</th>
                     <th className="py-3 px-5 font-medium text-gray-500 text-right">Created</th>
+                    <th className="py-3 px-5 font-medium text-gray-500 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {profiles.map((profile) => (
-                    <tr key={profile.id} className="border-b border-gray-50 hover:bg-gray-50/50">
-                      <td className="py-3 px-5 font-mono text-xs text-gray-600">
-                        {profile.id}
+                    <tr key={profile.id} className="border-b border-gray-50 hover:bg-gray-50/50 group">
+                      <td className="py-3 px-5 font-medium text-gray-700">
+                        {profile.email || "—"}
+                        {profile.id === currentUser?.id && (
+                          <span className="ml-2 text-[10px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded border border-amber-100">YOU</span>
+                        )}
                       </td>
                       <td className="py-3 px-5">
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-                          profile.role === 'admin' 
-                            ? 'bg-purple-100 text-purple-700 border border-purple-200' 
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${profile.role === 'admin'
+                            ? 'bg-purple-100 text-purple-700 border border-purple-200'
                             : 'bg-blue-100 text-blue-700 border border-blue-200'
-                        }`}>
+                          }`}>
                           {profile.role.charAt(0).toUpperCase() + profile.role.slice(1)}
                         </span>
                       </td>
                       <td className="py-3 px-5 text-right text-gray-500 text-xs">
                         {timeAgo(profile.created_at)}
+                      </td>
+                      <td className="py-3 px-5 text-right">
+                        {profile.id !== currentUser?.id && (
+                          <button
+                            onClick={() => handleDelete(profile.id)}
+                            disabled={isDeleting === profile.id || profile.role === 'admin'}
+                            className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded transition-all ${profile.role === 'admin'
+                                ? 'bg-gray-50 text-gray-400 cursor-not-allowed border border-gray-100'
+                                : 'bg-red-50 text-red-600 hover:bg-red-600 hover:text-white border border-red-100'
+                              }`}
+                            title={profile.role === 'admin' ? "Admins cannot delete other admins." : "Delete this operator"}
+                          >
+                            {isDeleting === profile.id ? "..." : "Delete"}
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}

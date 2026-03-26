@@ -7,57 +7,23 @@ import { confirmOrderPayment } from "@/lib/domain/orders";
 import SummaryCard from "@/components/SummaryCard";
 import OrderStatusBadge from "@/components/OrderStatusBadge";
 import { formatCurrency, timeAgo } from "@/lib/utils";
+import Skeleton from "@/components/Skeleton";
 import type { OrderWithItems, Product, Ingredient, RetailStock } from "@/lib/types";
 
-const DEMO_STATS = {
-  totalOrders: 24, totalRevenue: 4280, totalCost: 892, totalMargin: 3388,
-  cafeOrders: 18, fridgeOrders: 6,
-  totalExpected: 4280, totalConfirmed: 3150, unconfirmedCount: 8,
-  flaggedCount: 2,
+const GHOST_STATS = {
+  totalOrders: 0, totalRevenue: 0, totalCost: 0, totalMargin: 0,
+  cafeOrders: 0, fridgeOrders: 0,
+  totalExpected: 0, totalConfirmed: 0, unconfirmedCount: 0,
+  flaggedCount: 0,
 };
 
-const DEMO_ORDERS: OrderWithItems[] = [
-  {
-    id: "demo-r1", order_number: "CF-0012", source: "cafe", status: "completed", payment_method: "cash",
-    payment_proof_url: null, payment_proof_status: "none", payment_confirmed: true, order_snapshot_url: null, notes: null,
-    total_price: 280, total_cost: 45.6, margin: 234.4, created_at: new Date(Date.now() - 1200000).toISOString(),
-    preparing_at: null, ready_at: null, completed_at: new Date(Date.now() - 900000).toISOString(),
-    // V3 Fields
-    confirmed_by: "demo-admin-id", confirmed_at: new Date(Date.now() - 1000000).toISOString(),
-    customer_name: "Alice", payment_provider: "manual", payment_status: "paid", payment_reference: null, payment_amount: null, risk_flag: null,
-    order_items: [
-      { id: "oi1", order_id: "demo-r1", product_id: "c1", qty: 2, price_at_sale: 140, cost_at_sale: 22.8, products: { id: "c1", name: "Café Latte", type: "cafe", selling_price: 140, base_cost: null, image_url: null, active: true, low_stock_threshold: null, created_at: "" } },
-    ],
-  },
-  {
-    id: "demo-r2", order_number: "FR-0005", source: "fridge", status: "completed", payment_method: "gcash",
-    payment_proof_url: null, payment_proof_status: "uploaded", payment_confirmed: false, order_snapshot_url: null, notes: null,
-    total_price: 105, total_cost: 52, margin: 53, created_at: new Date(Date.now() - 2400000).toISOString(),
-    preparing_at: null, ready_at: null, completed_at: null,
-    // V3 Fields
-    confirmed_by: null, confirmed_at: null,
-    customer_name: null, payment_provider: "manual", payment_status: "unpaid", payment_reference: null, payment_amount: null, risk_flag: null,
-    order_items: [
-      { id: "oi2", order_id: "demo-r2", product_id: "r1", qty: 3, price_at_sale: 35, cost_at_sale: 18, products: { id: "r1", name: "Chips Pack", type: "retail", selling_price: 35, base_cost: 18, image_url: null, active: true, low_stock_threshold: 5, created_at: "" } },
-    ],
-  },
-];
-
-const DEMO_LOW_STOCK = [
-  { name: "Energy Drink", stock: 3, threshold: 5 },
-  { name: "Granola Bar", stock: 2, threshold: 5 },
-];
-
-const DEMO_LOW_INGREDIENTS = [
-  { name: "Matcha Powder", stock: 150, threshold: 200, unit: "g" },
-];
-
 export default function DashboardPage() {
-  const [stats, setStats] = useState(DEMO_STATS);
-  const [orders, setOrders] = useState<OrderWithItems[]>(DEMO_ORDERS);
-  const [lowStockRetail, setLowStockRetail] = useState(DEMO_LOW_STOCK);
-  const [lowStockIngredients, setLowStockIngredients] = useState(DEMO_LOW_INGREDIENTS);
-  const [isDemo, setIsDemo] = useState(true);
+  const [stats, setStats] = useState(GHOST_STATS);
+  const [orders, setOrders] = useState<OrderWithItems[]>([]);
+  const [lowStockRetail, setLowStockRetail] = useState<any[]>([]);
+  const [lowStockIngredients, setLowStockIngredients] = useState<any[]>([]);
+  const [isDemo, setIsDemo] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -65,6 +31,11 @@ export default function DashboardPage() {
     
     async function load() {
       try {
+        setLoading(true);
+        // Is this a demo URL?
+        const isActuallyDemo = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes("demo");
+        setIsDemo(isActuallyDemo);
+
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
@@ -77,6 +48,7 @@ export default function DashboardPage() {
         
         if (ordersError) {
           console.error("Dashboard Load Error:", ordersError);
+          setLoading(false);
           return;
         }
 
@@ -97,7 +69,7 @@ export default function DashboardPage() {
           totalExpected: totalRevenue,
           totalConfirmed,
           unconfirmedCount: fetched.filter((o) => !o.payment_confirmed).length,
-          flaggedCount: fetched.filter((o) => o.risk_flag).length,
+          flaggedCount: fetched.filter((o) => o.payment_proof_status === "flagged" || o.risk_flag).length,
         });
 
         // Low stock
@@ -125,9 +97,10 @@ export default function DashboardPage() {
           );
         }
 
-        setIsDemo(false);
+        setLoading(false);
       } catch (err) {
         console.error("Dashboard critical error:", err);
+        setLoading(false);
       }
     }
 
@@ -211,11 +184,29 @@ export default function DashboardPage() {
         
         <button 
           onClick={exportOrdersCSV}
-          className="btn-secondary text-xs flex items-center gap-2 max-w-fit"
+          disabled={loading}
+          className="btn-secondary text-xs flex items-center gap-2 max-w-fit disabled:opacity-50"
         >
           <span>📥</span> Export Today&apos;s Orders
         </button>
       </div>
+
+      {loading ? (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-24 w-full" />
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-28 w-full" />)}
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Skeleton className="lg:col-span-2 h-96 w-full" />
+            <Skeleton className="h-96 w-full" />
+          </div>
+        </div>
+      ) : (
+        <>
 
       {/* V3 Governance: Health & Checklist */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
@@ -281,16 +272,16 @@ export default function DashboardPage() {
       {/* Stats Row 1 */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <SummaryCard icon="📦" title="Total Orders" value={stats.totalOrders.toString()} subtitle={`${stats.cafeOrders} café · ${stats.fridgeOrders} fridge`} trend="neutral" />
-        <SummaryCard icon="💰" title="Revenue" value={formatCurrency(stats.totalRevenue)} trend="up" />
+        <SummaryCard icon="💰" title="Revenue" value={formatCurrency(stats.totalRevenue)} trend="neutral" />
         <SummaryCard icon="📉" title="COGS" value={formatCurrency(stats.totalCost)} trend="neutral" />
-        <SummaryCard icon="📈" title="Margin" value={formatCurrency(stats.totalMargin)} subtitle={stats.totalRevenue > 0 ? `${((stats.totalMargin / stats.totalRevenue) * 100).toFixed(1)}%` : "—"} trend="up" />
+        <SummaryCard icon="📈" title="Margin" value={formatCurrency(stats.totalMargin)} subtitle={stats.totalRevenue > 0 ? `${((stats.totalMargin / stats.totalRevenue) * 100).toFixed(1)}%` : "—"} trend="neutral" />
       </div>
 
       {/* Stats Row 2: Reconciliation */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         <SummaryCard icon="🎯" title="Expected Revenue" value={formatCurrency(stats.totalExpected)} trend="neutral" />
-        <SummaryCard icon="✅" title="Confirmed" value={formatCurrency(stats.totalConfirmed)} subtitle={`${stats.unconfirmedCount} unconfirmed`} trend={stats.totalConfirmed >= stats.totalExpected ? "up" : "down"} />
-        <SummaryCard icon={leakage > 0 ? "⚠️" : "🎉"} title="Unconfirmed Gap" value={formatCurrency(leakage)} subtitle={`${leakagePct}% of expected`} trend={leakage > 0 ? "down" : "up"} />
+        <SummaryCard icon="✅" title="Confirmed" value={formatCurrency(stats.totalConfirmed)} subtitle={`${stats.unconfirmedCount} unconfirmed`} trend="neutral" />
+        <SummaryCard icon={leakage > 0 ? "⚠️" : "🎉"} title="Unconfirmed Gap" value={formatCurrency(leakage)} subtitle={`${leakagePct}% of expected`} trend="neutral" />
       </div>
 
       {/* Two-column: Orders + Alerts */}
@@ -418,6 +409,8 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
-    </div>
+    </>
+  )}
+</div>
   );
 }

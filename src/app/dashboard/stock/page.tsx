@@ -3,13 +3,18 @@
 import { useState, useEffect, useTransition } from "react";
 import { createClient } from "@/lib/supabase/browser";
 import { adjustStock } from "@/lib/domain/orders";
-import type { Product, Ingredient, RetailStock } from "@/lib/types";
+import { timeAgo } from "@/lib/utils";
+import type { Product, Ingredient, RetailStock, InventoryMovement } from "@/lib/types";
 
 type MovementReason = "restock" | "adjustment" | "spoilage";
 
 export default function StockPage() {
   const [retailProducts, setRetailProducts] = useState<(Product & { retail_stock: RetailStock | null })[]>([]);
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [movements, setMovements] = useState<InventoryMovement[]>([]);
+  const [profileMap, setProfileMap] = useState<Record<string, string>>({}); // id -> email
+  const [page, setPage] = useState(0);
+  const [totalMovements, setTotalMovements] = useState(0);
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState("");
   const [modal, setModal] = useState<{
@@ -23,13 +28,14 @@ export default function StockPage() {
   } | null>(null);
 
   useEffect(() => { load(); }, []);
+  useEffect(() => { loadMovements(); }, [page]);
 
   async function load() {
     try {
       const supabase = createClient();
       const [{ data: prods }, { data: ings }] = await Promise.all([
         supabase.from("products").select("*, retail_stock(*)").eq("type", "retail").eq("active", true).order("name"),
-        supabase.from("ingredients").select("*").order("name"),
+        supabase.from("ingredients").select("*").order("name")
       ]);
       setRetailProducts(
         (prods ?? []).map((p: Record<string, unknown>) => ({
@@ -38,7 +44,48 @@ export default function StockPage() {
         })) as (Product & { retail_stock: RetailStock | null })[]
       );
       setIngredients((ings ?? []) as Ingredient[]);
-    } catch { /* demo */ }
+      loadMovements();
+    } catch (err) {
+      console.error("StockPage load error:", err);
+    }
+  }
+
+  async function loadMovements() {
+    try {
+      const supabase = createClient();
+      const PAGE_SIZE = 20;
+
+      // Fetch profiles for email lookup (client-side join — no FK needed)
+      const { data: profileList } = await supabase
+        .from("profiles")
+        .select("id, email, full_name");
+
+      if (profileList) {
+        const map: Record<string, string> = {};
+        for (const p of profileList) {
+          map[p.id] = p.email || p.full_name || "Admin";
+        }
+        setProfileMap(map);
+      }
+
+      // Get total count first
+      const { count } = await supabase
+        .from("inventory_movements")
+        .select("*", { count: "exact", head: true });
+
+      if (count !== null) setTotalMovements(count);
+
+      const { data: moves, error } = await supabase
+        .from("inventory_movements")
+        .select("*")
+        .order("performed_at", { ascending: false })
+        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+
+      if (error) throw error;
+      setMovements((moves ?? []) as InventoryMovement[]);
+    } catch (err: any) {
+      console.error("Movements load error:", err.message || err);
+    }
   }
 
   const handleSave = () => {
@@ -58,7 +105,7 @@ export default function StockPage() {
       if (result.success) {
         setMessage("✅ Stock updated");
         setModal(null);
-        await load();
+        await Promise.all([load(), loadMovements()]);
         setTimeout(() => setMessage(""), 3000);
       } else {
         setMessage(`❌ ${result.error}`);
@@ -192,6 +239,100 @@ export default function StockPage() {
             })}
           </tbody>
         </table>
+      </div>
+
+      {/* Stock History Logs */}
+      <div className="mt-8">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold text-gray-900">📜 Stock Audit History</h2>
+          <div className="flex items-center gap-4">
+            <span className="text-xs text-gray-500 uppercase tracking-wider">
+              {totalMovements > 0 ? `${page * 20 + 1}-${Math.min((page + 1) * 20, totalMovements)} of ${totalMovements}` : "No movements"}
+            </span>
+            <div className="flex gap-1">
+              <button 
+                onClick={() => setPage(p => Math.max(0, p - 1))}
+                disabled={page === 0}
+                className="px-2 py-1 rounded bg-white border text-xs shadow-sm hover:bg-gray-50 disabled:opacity-40"
+              >
+                ← Prev
+              </button>
+              <button 
+                onClick={() => setPage(p => p + 1)}
+                disabled={(page + 1) * 20 >= totalMovements}
+                className="px-2 py-1 rounded bg-white border text-xs shadow-sm hover:bg-gray-50 disabled:opacity-40"
+              >
+                Next →
+              </button>
+            </div>
+          </div>
+        </div>
+        <div className="card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 bg-gray-50">
+                  <th className="text-left py-3 px-4 font-medium text-gray-500">Timestamp</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-500">Item</th>
+                  <th className="text-center py-3 px-4 font-medium text-gray-500">Type</th>
+                  <th className="text-right py-3 px-4 font-medium text-gray-500">Adjustment</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-500">Performed By</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-500 max-w-[200px]">Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {movements.map((move) => {
+                  const itemName = retailProducts.find(p => p.id === move.item_id)?.name 
+                            || ingredients.find(i => i.id === move.item_id)?.name
+                            || "Unknown Item";
+                  
+                  const delta = move.quantity_delta;
+
+                  return (
+                    <tr key={move.id} className="border-b border-gray-50 hover:bg-gray-25 transition-colors">
+                      <td className="py-3 px-4 text-xs text-gray-500" title={new Date(move.performed_at || move.created_at).toLocaleString()}>
+                        {timeAgo(move.performed_at || move.created_at)}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="font-medium text-gray-900">{itemName}</span>
+                        {move.item_type === "ingredient" && (
+                          <span className="ml-1.5 text-[10px] uppercase text-amber-600 bg-amber-50 px-1 rounded">Ingredient</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                          move.movement_type === "restock" ? "bg-emerald-50 text-emerald-700" :
+                          move.movement_type === "spoilage" ? "bg-red-50 text-red-700" :
+                          "bg-gray-100 text-gray-600"
+                        }`}>
+                          {move.movement_type}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-right tabular-nums">
+                        <span className={`font-semibold ${delta > 0 ? "text-emerald-600" : delta < 0 ? "text-red-600" : "text-gray-500"}`}>
+                          {delta > 0 ? "+" : ""}{delta}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-xs text-gray-600">
+                        {move.performed_by ? (profileMap[move.performed_by] || "Admin") : "Admin"}
+                      </td>
+                      <td className="py-3 px-4 text-gray-500 truncate italic max-w-[200px]" title={move.notes || ""}>
+                        {move.notes || "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {movements.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="py-10 text-center text-gray-400">
+                      No recent stock movements found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       {/* Stock Adjustment Modal */}

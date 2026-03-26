@@ -148,7 +148,7 @@ export default function ReconciliationPage() {
           actualCount: "",
         }))
       );
-      
+
       setIngredientItems(
         (ingredients ?? []).map((i: Ingredient) => ({
           id: i.id,
@@ -158,7 +158,7 @@ export default function ReconciliationPage() {
           actualCount: "",
         }))
       );
-      
+
       setInventorySaved(false);
       setIngredientsSaved(false);
     } catch (err) {
@@ -222,7 +222,7 @@ export default function ReconciliationPage() {
   // ---- Payment Actions ----
   const handleMarkReconciled = (isOverride = false) => {
     if (isOverride && !overrideReason.trim()) return;
-    
+
     startTransition(async () => {
       if (isDemo) {
         setOrders((prev) => prev.map((o) => ({ ...o, payment_confirmed: true, payment_proof_status: "confirmed" as const })));
@@ -247,14 +247,14 @@ export default function ReconciliationPage() {
 
   const handleConfirm = (orderId: string) => {
     if (!window.confirm("Confirm payment for this order? This will mark it as settled in the system.")) return;
-    
+
     console.log(`[Reconciliation] Confirming order ${orderId}`);
-    
+
     // Save original state for possible revert
     const originalOrders = [...orders];
 
     // Optimistic Update
-    setOrders((prev) => 
+    setOrders((prev) =>
       prev.map((o) => o.id === orderId ? { ...o, payment_confirmed: true, payment_proof_status: "confirmed" as const } : o)
     );
 
@@ -281,12 +281,12 @@ export default function ReconciliationPage() {
     if (!window.confirm("Flag this order for manual review?")) return;
 
     console.log(`[Reconciliation] Flagging order ${orderId}`);
-    
+
     // Save original state
     const originalOrders = [...orders];
 
     // Optimistic Update
-    setOrders((prev) => 
+    setOrders((prev) =>
       prev.map((o) => o.id === orderId ? { ...o, payment_proof_status: "flagged" as const } : o)
     );
 
@@ -426,17 +426,15 @@ export default function ReconciliationPage() {
       <div className="flex gap-1 mb-6 bg-gray-100 rounded-lg p-1 w-fit">
         <button
           onClick={() => setActiveTab("payments")}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-            activeTab === "payments" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
-          }`}
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === "payments" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+            }`}
         >
           💰 Payments
         </button>
         <button
           onClick={() => setActiveTab("inventory")}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-            activeTab === "inventory" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
-          }`}
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === "inventory" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+            }`}
         >
           📦 Retail Check
           {inventoryMismatches.length > 0 && (
@@ -447,9 +445,8 @@ export default function ReconciliationPage() {
         </button>
         <button
           onClick={() => setActiveTab("ingredients")}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-            activeTab === "ingredients" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
-          }`}
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === "ingredients" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+            }`}
         >
           🧪 Ingredients Audit
           {ingredientMismatches.length > 0 && (
@@ -713,9 +710,8 @@ export default function ReconciliationPage() {
                   return (
                     <tr
                       key={item.id}
-                      className={`border-b border-gray-50 transition-colors ${
-                        isSevere ? "bg-red-50/50" : isMinor ? "bg-amber-50/30" : ""
-                      }`}
+                      className={`border-b border-gray-50 transition-colors ${isSevere ? "bg-red-50/50" : isMinor ? "bg-amber-50/30" : ""
+                        }`}
                     >
                       <td className="py-3 px-4">
                         <span className="font-medium text-gray-900">{item.name}</span>
@@ -731,20 +727,18 @@ export default function ReconciliationPage() {
                           value={item.actualCount}
                           onChange={(e) => updateActualCount(item.id, e.target.value)}
                           placeholder="—"
-                          className={`input text-center w-full tabular-nums ${
-                            isMismatch
+                          className={`input text-center w-full tabular-nums ${isMismatch
                               ? isSevere
                                 ? "!border-red-300 !ring-red-100"
                                 : "!border-amber-300 !ring-amber-100"
                               : ""
-                          }`}
+                            }`}
                         />
                       </td>
                       <td className="py-3 px-4 text-right tabular-nums">
                         {variance !== null ? (
-                          <span className={`font-semibold ${
-                            variance < 0 ? "text-red-600" : variance > 0 ? "text-amber-600" : "text-emerald-600"
-                          }`}>
+                          <span className={`font-semibold ${variance < 0 ? "text-red-600" : variance > 0 ? "text-amber-600" : "text-emerald-600"
+                            }`}>
                             {variance > 0 ? "+" : ""}{variance}
                           </span>
                         ) : (
@@ -870,9 +864,8 @@ export default function ReconciliationPage() {
                   return (
                     <tr
                       key={item.id}
-                      className={`border-b border-gray-50 transition-colors ${
-                        isMismatch ? "bg-amber-50/30" : ""
-                      }`}
+                      className={`border-b border-gray-50 transition-colors ${isMismatch ? "bg-amber-50/30" : ""
+                        }`}
                     >
                       <td className="py-3 px-4">
                         <span className="font-medium text-gray-900">{item.name}</span>
@@ -889,18 +882,16 @@ export default function ReconciliationPage() {
                             value={item.actualCount}
                             onChange={(e) => updateIngredientCount(item.id, e.target.value)}
                             placeholder="—"
-                            className={`input text-center w-24 tabular-nums ${
-                              isMismatch ? "!border-amber-300 !ring-amber-100" : ""
-                            }`}
+                            className={`input text-center w-24 tabular-nums ${isMismatch ? "!border-amber-300 !ring-amber-100" : ""
+                              }`}
                           />
                           <span className="text-xs text-gray-400 w-6 text-left">{item.unit}</span>
                         </div>
                       </td>
                       <td className="py-3 px-4 text-right tabular-nums">
                         {variance !== null ? (
-                          <span className={`font-semibold ${
-                            variance < 0 ? "text-red-600" : variance > 0 ? "text-amber-600" : "text-emerald-600"
-                          }`}>
+                          <span className={`font-semibold ${variance < 0 ? "text-red-600" : variance > 0 ? "text-amber-600" : "text-emerald-600"
+                            }`}>
                             {variance > 0 ? "+" : ""}{variance}
                           </span>
                         ) : (

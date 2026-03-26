@@ -19,6 +19,7 @@ export type PaymentStatus = "unpaid" | "pending" | "paid" | "failed" | "expired"
 export interface Profile {
   id: string;
   full_name: string;
+  email?: string | null;
   role: UserRole;
   created_at: string;
 }
