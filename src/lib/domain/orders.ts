@@ -200,6 +200,7 @@ export async function submitOrder(input: SubmitOrderInput): Promise<SubmitOrderR
 
     const order = await insertOrder({
       source: parsed.source as OrderSource,
+      status: parsed.source === "fridge" ? "completed" : "new",
       payment_method: parsed.paymentMethod as PaymentMethod,
       payment_proof_url: parsed.paymentProofUrl ?? null,
       payment_proof_status: parsed.paymentProofUrl ? "uploaded" : "none",
@@ -234,10 +235,8 @@ export async function submitOrder(input: SubmitOrderInput): Promise<SubmitOrderR
     }
 
     try {
-      if (order.source === "cafe") {
-        const itemsList = cartItems.map(item => `${item.qty}x ${item.product.name}`).join(", ");
-        await sendNewOrderAlert(order.order_number, totalPrice, order.customer_name, order.order_snapshot_url, itemsList);
-      }
+      const itemsList = cartItems.map(item => `${item.qty}x ${item.product.name}`).join(", ");
+      await sendNewOrderAlert(order.order_number, totalPrice, order.customer_name, order.order_snapshot_url, itemsList);
     } catch (e) {
       console.warn("Alert failed (non-blocking):", e);
     }

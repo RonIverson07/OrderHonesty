@@ -1,11 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import type { PaymentMethod, PaymentProvider, PaymentStatus, ProofStatus } from "@/lib/types";
+import type { PaymentMethod, PaymentProvider, PaymentStatus, ProofStatus, OrderStatus } from "@/lib/types";
 
 // ---- Insert Order ----
 
 export async function insertOrder(params: {
   source: "fridge" | "cafe";
+  status?: OrderStatus;
   payment_method: PaymentMethod;
   payment_proof_url?: string | null;
   payment_proof_status?: ProofStatus;
@@ -28,6 +29,7 @@ export async function insertOrder(params: {
     .from("orders")
     .insert({
       source: params.source,
+      status: params.status ?? "new",
       payment_method: params.payment_method,
       payment_proof_url: params.payment_proof_url ?? null,
       payment_proof_status: params.payment_proof_status ?? "none",
