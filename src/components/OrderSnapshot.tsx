@@ -88,11 +88,6 @@ export default function OrderSnapshot({ onCapture, onSkip }: OrderSnapshotProps)
       streamRef.current = stream;
 
       try {
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play();
-        }
-
         setState("counting");
 
         // Start countdown
@@ -118,6 +113,16 @@ export default function OrderSnapshot({ onCapture, onSkip }: OrderSnapshotProps)
       stopStream();
     };
   }, [capture, stopStream]);
+
+  // Safely attach stream AFTER the component enters "counting" state and <video> actually mounts
+  useEffect(() => {
+    if (state === "counting" && videoRef.current && streamRef.current) {
+      if (!videoRef.current.srcObject) {
+        videoRef.current.srcObject = streamRef.current;
+        videoRef.current.play().catch(err => console.warn("Auto-play prevented:", err));
+      }
+    }
+  }, [state]);
 
   if (state === "denied") {
     // Auto-skip after a moment
@@ -146,39 +151,35 @@ export default function OrderSnapshot({ onCapture, onSkip }: OrderSnapshotProps)
         )}
 
         {state === "counting" && (
-          <p className="text-sm text-gray-500 mb-3">
-            😊 Smile! Taking your order snapshot in...
-          </p>
-        )}
-
-        <div className={`relative rounded-xl overflow-hidden mb-3 bg-black ${state === "counting" ? "block" : "hidden"}`}>
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            className="w-full rounded-xl mirror"
-            style={{ transform: "scaleX(-1)" }}
-          />
-          {state === "counting" && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-6xl font-bold text-white drop-shadow-lg">
-                {countdown}
-              </span>
+          <>
+            <p className="text-sm text-gray-500 mb-3">
+              😊 Smile! Taking your order snapshot in...
+            </p>
+            <div className="relative rounded-xl overflow-hidden mb-3 bg-gray-100">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full rounded-xl mirror"
+                style={{ transform: "scaleX(-1)" }}
+              />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-6xl font-bold text-white drop-shadow-lg">
+                  {countdown}
+                </span>
+              </div>
             </div>
-          )}
-        </div>
-
-        {state === "counting" && (
-          <button
-            onClick={() => {
-              stopStream();
-              onSkip();
-            }}
-            className="text-sm text-gray-400 hover:text-gray-600 underline"
-          >
-            Skip photo
-          </button>
+            <button
+              onClick={() => {
+                stopStream();
+                onSkip();
+              }}
+              className="text-sm text-gray-400 hover:text-gray-600 underline"
+            >
+              Skip photo
+            </button>
+          </>
         )}
 
         {state === "captured" && previewUrl && (
