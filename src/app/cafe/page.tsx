@@ -39,7 +39,7 @@ export default function CafePage() {
 
         // Load products (existing logic)
         const { data: productsData, error: prodError } = await supabase
-          .from("products").select("*").eq("type", "cafe").eq("active", true).order("name");
+          .from("products").select("*, retail_stock(*)").eq("type", "cafe").eq("active", true).order("name");
         if (prodError) throw prodError;
 
         const productIds = (productsData ?? []).map((p: { id: string }) => p.id);
@@ -53,9 +53,17 @@ export default function CafePage() {
         }
 
         const withAvailability: CafeProductAvailability[] = (productsData ?? []).map(
-          (product: CafeProductAvailability) => {
+          (product: CafeProductAvailability & { retail_stock?: any }) => {
             const myRecipes = recipes.filter((r: { product_id: string }) => r.product_id === product.id);
-            if (myRecipes.length === 0) return { ...product, available: true, max_servings: 999 };
+            if (myRecipes.length === 0) {
+              const rStockVal = Array.isArray(product.retail_stock) ? product.retail_stock[0]?.stock : product.retail_stock?.stock;
+              const directStock = rStockVal ?? 0;
+              return { 
+                ...product, 
+                available: directStock > 0, 
+                max_servings: directStock 
+              };
+            }
 
             let minServings = Infinity;
             for (const recipe of myRecipes) {
