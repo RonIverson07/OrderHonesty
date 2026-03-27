@@ -145,39 +145,59 @@ export default function RecipesPage() {
                   No recipe defined. Click &ldquo;+ Add Ingredient&rdquo; to start.
                 </p>
               ) : (
-                <div className="space-y-2 mb-4">
+                <div className="space-y-3 mb-4">
+                  {/* Column headers */}
+                  <div className="grid grid-cols-[1fr_auto_auto_auto] gap-2 px-1">
+                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Ingredient</span>
+                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider w-24 text-center">Qty</span>
+                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider w-20 text-right">Cost</span>
+                    <span className="w-6" />
+                  </div>
+
                   {recipes.map((row, idx) => {
                     const ing = ingredientMap.get(row.ingredient_id);
                     const lineCost = ing ? ing.unit_cost * row.qty_required : 0;
                     return (
-                      <div key={idx} className="flex items-center gap-2">
-                        <select
-                          value={row.ingredient_id}
-                          onChange={(e) => updateRow(idx, "ingredient_id", e.target.value)}
-                          className="input flex-1"
-                        >
-                          <option value="">Select ingredient</option>
-                          {ingredients.map((i) => (
-                            <option key={i.id} value={i.id}>{i.name} ({i.unit})</option>
-                          ))}
-                        </select>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={row.qty_required || ""}
-                          onChange={(e) => updateRow(idx, "qty_required", parseFloat(e.target.value) || 0)}
-                          className="input w-24"
-                          placeholder="Qty"
-                        />
-                        <span className="text-xs text-gray-400 w-20 text-right">
-                          {formatCurrency(lineCost)}
-                        </span>
-                        <button
-                          onClick={() => removeRow(idx)}
-                          className="text-red-400 hover:text-red-600 text-lg px-1"
-                        >
-                          ×
-                        </button>
+                      <div key={idx} className="flex flex-col gap-1 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5">
+                        {/* Ingredient name label — always visible */}
+                        {ing && (
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <span className="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-100 rounded-full px-2.5 py-0.5">
+                              {ing.name}
+                            </span>
+                            <span className="text-xs text-gray-400">({ing.unit})</span>
+                          </div>
+                        )}
+                        {/* Controls row */}
+                        <div className="flex items-center gap-2">
+                          <select
+                            value={row.ingredient_id}
+                            onChange={(e) => updateRow(idx, "ingredient_id", e.target.value)}
+                            className="input flex-1 text-sm"
+                          >
+                            <option value="">Select ingredient</option>
+                            {ingredients.map((i) => (
+                              <option key={i.id} value={i.id}>{i.name} ({i.unit})</option>
+                            ))}
+                          </select>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={row.qty_required || ""}
+                            onChange={(e) => updateRow(idx, "qty_required", parseFloat(e.target.value) || 0)}
+                            className="input w-24 text-sm"
+                            placeholder="Qty"
+                          />
+                          <span className="text-xs text-gray-500 w-20 text-right font-medium">
+                            {formatCurrency(lineCost)}
+                          </span>
+                          <button
+                            onClick={() => removeRow(idx)}
+                            className="text-red-400 hover:text-red-600 text-lg px-1 flex-shrink-0"
+                          >
+                            ×
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
