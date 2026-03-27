@@ -6,6 +6,7 @@ import { updateStatus } from "@/lib/domain/orders";
 import OrderStatusBadge from "@/components/OrderStatusBadge";
 import { formatCurrency, timeAgo } from "@/lib/utils";
 import type { OrderWithItems, OrderStatus } from "@/lib/types";
+import { Target } from "lucide-react";
 
 const STATUS_FLOW: Record<string, OrderStatus> = {
   new: "preparing",
@@ -82,7 +83,9 @@ export default function BaristaPage() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-1">🎯 Barista Queue</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-1 flex items-center gap-2">
+            <Target className="w-8 h-8 text-amber-700" /> Barista Queue
+          </h1>
           <p className="text-gray-500">Active orders — updates in realtime</p>
         </div>
         <div className="text-right">

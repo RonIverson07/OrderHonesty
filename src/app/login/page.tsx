@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/browser";
 import Link from "next/link";
+import { Coffee, BarChart3 } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -44,7 +45,7 @@ export default function LoginPage() {
 
       if (isDemoMode) {
         // Local Developer Bypass (Demo Mode)
-        if (email === "admin@labrew.local" && password === "admin123") {
+        if (email === "admin@Lebrew.local" && password === "admin123") {
           document.cookie = `demo_role=${loginMode}; path=/`;
           if (loginMode === "admin") {
             router.push("/dashboard");
@@ -112,11 +113,15 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-neutral-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="flex justify-center text-4xl mb-4">
-          ☕
+        <div className="flex justify-center mb-6">
+          <img 
+            src="/startuplogo.jpg" 
+            alt="StartupLab Logo"
+            className="h-40 w-auto object-contain drop-shadow-sm" 
+          />
         </div>
-        <h2 className="mt-2 text-center text-3xl font-extrabold text-neutral-900">
-          Sign in to LaBrew
+        <h2 className="mt-2 text-center text-3xl font-bold text-gray-900">
+          Sign in to dashboard
         </h2>
         <p className="mt-2 text-center text-sm text-neutral-600">
           Or return to the{" "}
@@ -132,23 +137,23 @@ export default function LoginPage() {
         <div className="flex bg-neutral-200 p-1 rounded-lg mb-6 shadow-inner mx-4 sm:mx-0">
           <button
             onClick={() => setLoginMode("barista")}
-            className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${
+            className={`flex flex-1 items-center justify-center gap-2 py-2 text-sm font-medium rounded-md transition-all ${
               loginMode === "barista" 
                 ? "bg-white text-amber-700 shadow-sm" 
                 : "text-neutral-500 hover:text-neutral-700"
             }`}
           >
-            ☕ Login as Barista
+            <Coffee className="w-4 h-4" /> Login as Barista
           </button>
           <button
             onClick={() => setLoginMode("admin")}
-            className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${
+            className={`flex flex-1 items-center justify-center gap-2 py-2 text-sm font-medium rounded-md transition-all ${
               loginMode === "admin" 
                 ? "bg-white text-amber-700 shadow-sm" 
                 : "text-neutral-500 hover:text-neutral-700"
             }`}
           >
-            📊 Login as Admin
+            <BarChart3 className="w-4 h-4 text-emerald-600" /> Login as Admin
           </button>
         </div>
 
@@ -166,7 +171,7 @@ export default function LoginPage() {
               : "Access the system settings and management toolkit."}
             <br/><br/>
             <span className="text-amber-600 font-medium bg-amber-50 px-2 py-1 rounded">
-              Demo Credentials: {loginMode === "barista" ? "barista@labrew.local" : "admin@labrew.local"} / admin123
+              Demo Credentials: {loginMode === "barista" ? "barista@Lebrew.local" : "admin@Lebrew.local"} / admin123
             </span>
           </div>
 

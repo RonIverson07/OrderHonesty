@@ -6,10 +6,11 @@ import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/browser";
 import type { Profile } from "@/lib/types";
+import { Snowflake, Coffee, BarChart3 } from "lucide-react";
 
 const publicLinks = [
-  { href: "/fridge", label: "Fridge", icon: "🧊" },
-  { href: "/cafe", label: "Café", icon: "☕" },
+  { href: "/fridge", label: "Fridge", icon: <Snowflake className="w-5 h-5 text-blue-500" /> },
+  { href: "/cafe", label: "Café", icon: <Coffee className="w-5 h-5 text-amber-700" /> },
 ];
 
 export default function Navbar() {
@@ -91,13 +92,16 @@ export default function Navbar() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <div className="flex h-14 items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500 text-sm font-bold text-white shadow-sm transition-transform group-hover:scale-105">
-              L
+          <Link href="/" className="flex items-center gap-2.5 group">
+            <img 
+              src="/startuplogo.jpg" 
+              alt="StartupLab Logo"
+              className="h-8 w-auto object-contain transition-transform group-hover:scale-105 drop-shadow-sm" 
+            />
+            <div className="flex flex-col leading-tight">
+              <span className="text-[10px] font-medium text-gray-400 tracking-wider uppercase">StartupLab</span>
+              <span className="text-sm font-bold text-gray-800 tracking-tight">Labrew</span>
             </div>
-            <span className="text-lg font-bold text-gray-900 hidden sm:block">
-              LaBrew
-            </span>
           </Link>
 
           {/* Nav Links */}
@@ -138,7 +142,7 @@ export default function Navbar() {
                         : "text-amber-600 hover:bg-amber-50 hover:text-amber-700 font-bold"
                     )}
                   >
-                    <span className="text-base group-hover:scale-110 transition-transform">📊</span>
+                    <span className="group-hover:scale-110 transition-transform"><BarChart3 className="w-5 h-5" /></span>
                     <span className="hidden sm:inline">
                       {profile.role === "admin" ? "Admin Panel" : "Barista Queue"}
                     </span>

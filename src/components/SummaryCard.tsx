@@ -2,7 +2,7 @@ interface SummaryCardProps {
   title: string;
   value: string;
   subtitle?: string;
-  icon: string;
+  icon: React.ReactNode;
   trend?: "up" | "down" | "neutral";
 }
 

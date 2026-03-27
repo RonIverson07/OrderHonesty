@@ -76,7 +76,7 @@ async function sendEmail(to: string, subject: string, htmlHtml: string, type: No
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "LaBrew System <onboarding@resend.dev>", // Uses Resend's default onboarding email so you don't have to buy a domain name!
+        from: "Lebrew System <onboarding@resend.dev>", // Uses Resend's default onboarding email so you don't have to buy a domain name!
         to,
         subject,
         html: htmlHtml,
@@ -107,13 +107,13 @@ function buildEmailLayout(title: string, contentHtml: string): string {
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f9fafb; margin: 0; padding: 20px;">
   <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border: 1px solid #f3f4f6;">
     <div style="background-color: #d97706; padding: 24px 32px; text-align: center;">
-      <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.5px;">LaBrew</h1>
+      <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.5px;">Lebrew</h1>
     </div>
     <div style="padding: 32px; color: #374151; font-size: 15px; line-height: 1.6;">
       ${contentHtml}
     </div>
     <div style="background-color: #f9fafb; padding: 24px 32px; text-align: center; font-size: 13px; color: #6b7280; border-top: 1px solid #f3f4f6;">
-      <p style="margin: 0;">This is an automated notification from your LaBrew Management System.</p>
+      <p style="margin: 0;">This is an automated notification from your Lebrew Management System.</p>
     </div>
   </div>
 </body>
@@ -129,8 +129,8 @@ export async function sendTestNotification(toEmail?: string) {
 
   return sendEmail(
     target,
-    "LaBrew: Systematic Notification Test ☕",
-    buildEmailLayout("System Test", `<h2 style="color: #111827; font-size: 20px; margin-top: 0; margin-bottom: 16px;">System Test Successful</h2><p style="margin:0 0 16px 0;">This is a test notification from your LaBrew system settings. If you received this, your automated email configuration is working perfectly natively!</p>`),
+    "Lebrew: Systematic Notification Test ☕",
+    buildEmailLayout("System Test", `<h2 style="color: #111827; font-size: 20px; margin-top: 0; margin-bottom: 16px;">System Test Successful</h2><p style="margin:0 0 16px 0;">This is a test notification from your Lebrew system settings. If you received this, your automated email configuration is working perfectly natively!</p>`),
     "test"
   );
 }

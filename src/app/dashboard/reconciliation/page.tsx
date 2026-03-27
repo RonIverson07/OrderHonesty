@@ -6,6 +6,7 @@ import { confirmOrderPayment, markDayReconciled, updatePaymentProofStatus, saveI
 import { formatCurrency, timeAgo } from "@/lib/utils";
 import type { OrderWithItems, Product, RetailStock, Ingredient } from "@/lib/types";
 import Link from "next/link";
+import { Receipt } from "lucide-react";
 
 // ---- Demo Data ----
 
@@ -395,7 +396,9 @@ export default function ReconciliationPage() {
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">🧾 Reconciliation</h1>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <Receipt className="w-6 h-6 text-rose-500" /> Reconciliation
+          </h1>
           <p className="text-sm text-gray-500">Payment verification &amp; inventory checks</p>
           {isDemo && (
             <div className="mt-2 p-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-xs">

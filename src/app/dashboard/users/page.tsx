@@ -1,7 +1,7 @@
 import UsersClient from "./UsersClient";
 
 export const metadata = {
-  title: "Users | LaBrew",
+  title: "Users | Lebrew",
 };
 
 // Render client component directly — data is fetched client-side

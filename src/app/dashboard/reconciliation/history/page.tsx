@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/browser";
 import { formatCurrency } from "@/lib/utils";
 import type { ReconciliationDay } from "@/lib/types";
+import { TrendingUp } from "lucide-react";
 import Link from "next/link";
 
 const DEMO_HISTORY: ReconciliationDay[] = [
@@ -82,7 +83,9 @@ export default function ReconciliationHistoryPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">📈 Reconciliation History</h1>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <TrendingUp className="w-6 h-6 text-emerald-600" /> Reconciliation History
+          </h1>
           <p className="text-sm text-gray-500">Past reconciliations, trends, and flagged items</p>
           {isDemo && (
             <div className="mt-2 p-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-xs">⚡ Demo mode</div>

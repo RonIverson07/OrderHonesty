@@ -9,9 +9,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "LaBrew — Self-Service Café & Honesty Store",
+  title: "Lebrew — Self-Service Café & Honesty Store",
   description:
-    "Order your favorite drinks and grab-and-go snacks from LaBrew.",
+    "Order your favorite drinks and grab-and-go snacks from Lebrew.",
 };
 
 export default function RootLayout({

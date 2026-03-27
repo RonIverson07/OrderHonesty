@@ -57,7 +57,7 @@ export async function createHitPayRequest(
       currency: params.currency || "PHP",
       email: params.email || undefined,
       name: params.name || undefined,
-      purpose: params.purpose || `LaBrew Order ${params.orderId}`,
+      purpose: params.purpose || `Lebrew Order ${params.orderId}`,
       reference_number: params.orderId,
       redirect_url: params.redirectUrl || `${APP_URL}/order/success`,
       webhook: params.webhookUrl || `${APP_URL}/api/payments/hitpay/webhook`,

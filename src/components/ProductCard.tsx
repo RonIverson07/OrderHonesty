@@ -24,8 +24,14 @@ export default function ProductCard({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalQty, setModalQty] = useState(0);
 
+  // Image click: add +1 directly (no modal)
+  const handleImageClick = () => {
+    if (isDisabled) return;
+    const next = maxQty !== undefined ? Math.min(maxQty, qty + 1) : qty + 1;
+    onQtyChange(next);
+  };
+
   const openModal = () => {
-    // If they already have an order for this, start with that qty; otherwise default to 1 for quick adding
     setModalQty(qty > 0 ? qty : 1);
     setIsModalOpen(true);
   };
@@ -45,10 +51,12 @@ export default function ProductCard({
         isDisabled ? "opacity-60" : ""
       }`}
     >
-      {/* Image Container with Zoom Affordance */}
+      {/* Image Container — click to add +1 */}
       <div 
-        className={`aspect-[4/3] bg-gradient-to-br from-amber-50 to-orange-50 relative overflow-hidden cursor-pointer group`}
-        onClick={openModal}
+        className={`aspect-[4/3] bg-gradient-to-br from-amber-50 to-orange-50 relative overflow-hidden ${
+          isDisabled ? "cursor-not-allowed" : "cursor-pointer group"
+        }`}
+        onClick={handleImageClick}
       >
         {product.image_url ? (
           <>
@@ -57,12 +65,14 @@ export default function ProductCard({
               alt={product.name}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
-            {/* Hover overlay hint */}
-            <div className="absolute inset-0 bg-black/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-              <span className="bg-white/90 text-gray-800 p-2 rounded-full shadow-md text-xl">
-                🔍
-              </span>
-            </div>
+            {/* Hover overlay: tap to add */}
+            {!isDisabled && (
+              <div className="absolute inset-0 bg-black/15 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <span className="bg-white/95 text-gray-800 w-11 h-11 flex items-center justify-center rounded-full shadow-lg text-2xl font-bold leading-none">
+                  +
+                </span>
+              </div>
+            )}
           </>
         ) : (
           <div className="w-full h-full flex items-center justify-center">

@@ -137,7 +137,7 @@ export default function SettingsClient({ initialSettings, envSettings: _env, aud
                 value={email} 
                 onChange={(e) => setEmail(e.target.value)}
                 className="input-field"
-                placeholder="admin@labrew.com"
+                placeholder="admin@Lebrew.com"
               />
             </div>
 

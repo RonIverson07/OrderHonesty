@@ -1,5 +1,33 @@
 @import "tailwindcss";
 
+@theme {
+  /* Applying the Custom Brand Palette "Vibe" across the application */
+  /* Rebinding default UI accents so all previous structural markup naturally adopts the new design concept */
+  --color-amber-50: #F2F2F2;
+  --color-amber-100: #E3F2FB;
+  --color-amber-200: #C7E6F7;
+  --color-amber-300: #9DD3EE;
+  --color-amber-400: #6FBCE2;
+  --color-amber-500: #38BDF2;
+  --color-amber-600: #3FA7D6;
+  --color-amber-700: #3768A2;
+  --color-amber-800: #003E86;
+  --color-amber-900: #0B2545;
+
+  --color-orange-50: #F2F2F2;
+  --color-orange-100: #E3F2FB;
+  --color-orange-200: #C7E6F7;
+  --color-orange-300: #9DD3EE;
+  --color-orange-400: #6FBCE2;
+  --color-orange-500: #38BDF2;
+  --color-orange-600: #3FA7D6;
+  --color-orange-700: #3768A2;
+  --color-orange-800: #003E86;
+  --color-orange-900: #0B2545;
+
+  /* Typography specification */
+  --font-sans: "Helvetica Neue", Helvetica, system-ui, -apple-system, Arial, sans-serif;
+}
 :root {
   --color-brand: #d97706;
   --color-brand-light: #f59e0b;
@@ -29,7 +57,7 @@ html {
 body {
   background: #f8f9fb;
   color: var(--color-text);
-  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -119,10 +147,10 @@ body {
 
 /* ---- Button primary ---- */
 .btn-primary {
-  background: var(--color-brand);
+  background: var(--color-amber-500);
   color: #ffffff;
   font-weight: 600;
-  padding: 0.625rem 1.5rem;
+  padding: 12px 16px;
   border-radius: 0.75rem;
   border: none;
   cursor: pointer;
@@ -132,13 +160,26 @@ body {
   justify-content: center;
 }
 
-.btn-primary:hover {
-  background: var(--color-brand-dark);
-  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.2);
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-amber-700);
+  box-shadow: 0 4px 12px rgba(55, 104, 162, 0.2);
+}
+
+.btn-primary:focus:not(:disabled) {
+  background: var(--color-amber-800);
+  outline: 2px solid var(--color-amber-300);
+  outline-offset: 2px;
+}
+
+.btn-primary:active:not(:disabled) {
+  background: var(--color-amber-900);
+  transform: translateY(1px);
 }
 
 .btn-primary:disabled {
-  opacity: 0.5;
+  background: var(--color-amber-50);
+  color: #9ca3af;
+  opacity: 1;
   cursor: not-allowed;
   box-shadow: none;
 }

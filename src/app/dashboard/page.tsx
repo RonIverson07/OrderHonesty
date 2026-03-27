@@ -9,6 +9,12 @@ import OrderStatusBadge from "@/components/OrderStatusBadge";
 import { formatCurrency, timeAgo } from "@/lib/utils";
 import Skeleton from "@/components/Skeleton";
 import type { OrderWithItems, Product, Ingredient, RetailStock } from "@/lib/types";
+import {
+  Package, DollarSign, TrendingDown, TrendingUp,
+  Target, CheckCircle2, AlertTriangle, ClipboardList,
+  Download, Zap, FlaskConical, ChefHat, Inbox, Receipt,
+  Paperclip, CheckCheck, AlertOctagon, X
+} from "lucide-react";
 
 const GHOST_STATS = {
   totalOrders: 0, totalRevenue: 0, totalCost: 0, totalMargin: 0,
@@ -74,19 +80,23 @@ export default function DashboardPage() {
           flaggedCount: fetched.filter((o) => o.payment_proof_status === "flagged" || o.risk_flag).length,
         });
 
-        // Low stock
+        // Low stock — normalize retail_stock array → object (same as stock page)
         const { data: retailData } = await supabase
-          .from("products").select("*, retail_stock(*)").eq("type", "retail").eq("active", true);
+          .from("products").select("*, retail_stock(*)").eq("type", "retail").eq("active", true).order("name");
 
         if (retailData) {
+          const normalized = (retailData as (Product & { retail_stock: RetailStock[] })[]).map((p) => {
+            const stockRow: RetailStock | null = Array.isArray(p.retail_stock)
+              ? (p.retail_stock[0] ?? null)
+              : (p.retail_stock as RetailStock | null);
+            return {
+              name: p.name,
+              stock: stockRow?.stock ?? 0,
+              threshold: p.low_stock_threshold ?? 5,
+            };
+          });
           setLowStockRetail(
-            (retailData as (Product & { retail_stock: RetailStock[] })[])
-              .map((p) => ({
-                name: p.name,
-                stock: Array.isArray(p.retail_stock) ? (p.retail_stock[0]?.stock ?? 0) : 0,
-                threshold: p.low_stock_threshold ?? 5,
-              }))
-              .filter((p) => p.stock <= p.threshold)
+            normalized.filter((p) => p.stock <= p.threshold)
           );
         }
 
@@ -165,7 +175,7 @@ export default function DashboardPage() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `labrew_orders_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute("download", `Lebrew_orders_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -178,8 +188,8 @@ export default function DashboardPage() {
           <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-sm text-gray-500">Today&apos;s overview</p>
           {isDemo && (
-            <div className="mt-2 p-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-xs inline-block">
-              ⚡ Demo mode
+            <div className="mt-2 p-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-xs inline-flex items-center gap-1">
+              <Zap className="w-3 h-3" /> Demo mode
             </div>
           )}
         </div>
@@ -189,7 +199,7 @@ export default function DashboardPage() {
           disabled={loading}
           className="btn-secondary text-xs flex items-center gap-2 max-w-fit disabled:opacity-50"
         >
-          <span>📥</span> Export Today&apos;s Orders
+          <Download className="w-3.5 h-3.5" /> Export Today&apos;s Orders
         </button>
       </div>
 
@@ -230,7 +240,7 @@ export default function DashboardPage() {
             {/* Operator Checklist */}
             <div className="card p-4">
               <h3 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                <span>📋</span> Operator Checklist
+                <ClipboardList className="w-4 h-4 text-amber-600" /> Operator Checklist
               </h3>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <label className="flex items-center gap-2 text-gray-700">
@@ -255,15 +265,15 @@ export default function DashboardPage() {
 
           {/* Quick Links (mobile-friendly) */}
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6 lg:hidden">
-            {[
-              { href: "/dashboard/products", icon: "📦", label: "Products" },
-              { href: "/dashboard/ingredients", icon: "🧪", label: "Ingredients" },
-              { href: "/dashboard/recipes", icon: "📋", label: "Recipes" },
-              { href: "/dashboard/stock", icon: "📥", label: "Stock" },
-              { href: "/dashboard/reconciliation", icon: "🧾", label: "Reconcile" },
-            ].map((link) => (
+            {([
+              { href: "/dashboard/products", icon: <Package className="w-6 h-6 text-amber-600 mx-auto" />, label: "Products" },
+              { href: "/dashboard/ingredients", icon: <FlaskConical className="w-6 h-6 text-emerald-600 mx-auto" />, label: "Ingredients" },
+              { href: "/dashboard/recipes", icon: <ChefHat className="w-6 h-6 text-purple-600 mx-auto" />, label: "Recipes" },
+              { href: "/dashboard/stock", icon: <Inbox className="w-6 h-6 text-blue-600 mx-auto" />, label: "Stock" },
+              { href: "/dashboard/reconciliation", icon: <Receipt className="w-6 h-6 text-rose-600 mx-auto" />, label: "Reconcile" },
+            ] as { href: string; icon: React.ReactNode; label: string }[]).map((link) => (
               <Link key={link.href} href={link.href} className="card p-3 text-center hover:shadow-md transition-shadow">
-                <span className="text-2xl block mb-1">{link.icon}</span>
+                <span className="block mb-1">{link.icon}</span>
                 <span className="text-xs font-medium text-gray-600">{link.label}</span>
               </Link>
             ))}
@@ -271,17 +281,17 @@ export default function DashboardPage() {
 
           {/* Stats Row 1 */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-            <SummaryCard icon="📦" title="Total Orders" value={stats.totalOrders.toString()} subtitle={`${stats.cafeOrders} café · ${stats.fridgeOrders} fridge`} trend="neutral" />
-            <SummaryCard icon="💰" title="Revenue" value={formatCurrency(stats.totalRevenue)} trend="neutral" />
-            <SummaryCard icon="📉" title="COGS" value={formatCurrency(stats.totalCost)} trend="neutral" />
-            <SummaryCard icon="📈" title="Margin" value={formatCurrency(stats.totalMargin)} subtitle={stats.totalRevenue > 0 ? `${((stats.totalMargin / stats.totalRevenue) * 100).toFixed(1)}%` : "—"} trend="neutral" />
+            <SummaryCard icon={<Package className="w-6 h-6 text-amber-500" />} title="Total Orders" value={stats.totalOrders.toString()} subtitle={`${stats.cafeOrders} café · ${stats.fridgeOrders} fridge`} trend="neutral" />
+            <SummaryCard icon={<DollarSign className="w-6 h-6 text-emerald-500" />} title="Revenue" value={formatCurrency(stats.totalRevenue)} trend="neutral" />
+            <SummaryCard icon={<TrendingDown className="w-6 h-6 text-red-400" />} title="COGS" value={formatCurrency(stats.totalCost)} trend="neutral" />
+            <SummaryCard icon={<TrendingUp className="w-6 h-6 text-blue-500" />} title="Margin" value={formatCurrency(stats.totalMargin)} subtitle={stats.totalRevenue > 0 ? `${((stats.totalMargin / stats.totalRevenue) * 100).toFixed(1)}%` : "—"} trend="neutral" />
           </div>
 
           {/* Stats Row 2: Reconciliation */}
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-            <SummaryCard icon="🎯" title="Expected Revenue" value={formatCurrency(stats.totalExpected)} trend="neutral" />
-            <SummaryCard icon="✅" title="Confirmed" value={formatCurrency(stats.totalConfirmed)} subtitle={`${stats.unconfirmedCount} unconfirmed`} trend="neutral" />
-            <SummaryCard icon={leakage > 0 ? "⚠️" : "🎉"} title="Unconfirmed Gap" value={formatCurrency(leakage)} subtitle={`${leakagePct}% of expected`} trend="neutral" />
+            <SummaryCard icon={<Target className="w-6 h-6 text-purple-500" />} title="Expected Revenue" value={formatCurrency(stats.totalExpected)} trend="neutral" />
+            <SummaryCard icon={<CheckCircle2 className="w-6 h-6 text-emerald-500" />} title="Confirmed" value={formatCurrency(stats.totalConfirmed)} subtitle={`${stats.unconfirmedCount} unconfirmed`} trend="neutral" />
+            <SummaryCard icon={leakage > 0 ? <AlertTriangle className="w-6 h-6 text-amber-500" /> : <CheckCircle2 className="w-6 h-6 text-emerald-500" />} title="Unconfirmed Gap" value={formatCurrency(leakage)} subtitle={`${leakagePct}% of expected`} trend="neutral" />
           </div>
 
           {/* Two-column: Orders + Alerts */}
@@ -310,8 +320,11 @@ export default function DashboardPage() {
                           confirmed: "bg-emerald-50 text-emerald-700",
                           flagged: "bg-red-50 text-red-700",
                         };
-                        const proofLabels: Record<string, string> = {
-                          none: "—", uploaded: "📎", confirmed: "✓", flagged: "⚠",
+                        const proofLabels: Record<string, React.ReactNode> = {
+                          none: "—",
+                          uploaded: <Paperclip className="w-3 h-3 inline" />,
+                          confirmed: <CheckCheck className="w-3 h-3 inline text-emerald-600" />,
+                          flagged: <AlertOctagon className="w-3 h-3 inline text-red-500" />,
                         };
                         return (
                           <tr key={order.id} className="border-b border-gray-50 hover:bg-gray-25">
@@ -341,7 +354,7 @@ export default function DashboardPage() {
                             <td className="py-3 px-4 text-right font-medium">{formatCurrency(order.total_price)}</td>
                             <td className="py-3 px-4 text-center">
                               {order.payment_confirmed ? (
-                                <span className="text-emerald-600 text-xs font-medium">✓</span>
+                                <CheckCheck className="w-4 h-4 text-emerald-600 mx-auto" />
                               ) : (
                                 <button onClick={() => handleConfirmPayment(order.id)} disabled={isPending}
                                   className="text-xs px-2 py-1 rounded bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 transition disabled:opacity-50">
@@ -374,7 +387,7 @@ export default function DashboardPage() {
 
             {/* Low Stock Alerts */}
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">⚠️ Low Stock</h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2"><AlertTriangle className="w-5 h-5 text-amber-500" /> Low Stock</h2>
               <div className="space-y-3">
                 {lowStockRetail.length === 0 && lowStockIngredients.length === 0 && (
                   <div className="card p-4 text-center text-gray-400 text-sm">All stock healthy ✅</div>
@@ -460,7 +473,7 @@ export default function DashboardPage() {
                 <h3 className="font-bold text-gray-900 leading-tight">Order Receipt</h3>
                 <p className="text-xs text-gray-500">{viewItemsOrder.order_number || `#${viewItemsOrder.id.slice(0, 8)}`}</p>
               </div>
-              <button onClick={() => setViewItemsOrder(null)} className="text-gray-400 hover:text-gray-600 p-2 -mr-2">✕</button>
+              <button onClick={() => setViewItemsOrder(null)} className="text-gray-400 hover:text-gray-600 p-2 -mr-2"><X className="w-4 h-4" /></button>
             </div>
             
             <div className="p-6 max-h-[60vh] overflow-y-auto">

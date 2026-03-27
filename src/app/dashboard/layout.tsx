@@ -5,16 +5,18 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 
+import { Ticket, BarChart3, Package, FlaskConical, ClipboardList, Inbox, Receipt, Users, Settings } from "lucide-react";
+
 const adminLinks = [
-  { href: "/barista", label: "Order Queue", icon: "🎟️", exact: false },
-  { href: "/dashboard", label: "Overview", icon: "📊", exact: true },
-  { href: "/dashboard/products", label: "Products", icon: "📦", exact: false },
-  { href: "/dashboard/ingredients", label: "Ingredients", icon: "🧪", exact: false },
-  { href: "/dashboard/recipes", label: "Recipes", icon: "📋", exact: false },
-  { href: "/dashboard/stock", label: "Stock", icon: "📥", exact: false },
-  { href: "/dashboard/reconciliation", label: "Reconciliation", icon: "🧾", exact: false },
-  { href: "/dashboard/users", label: "Users", icon: "👥", exact: false },
-  { href: "/dashboard/settings", label: "Settings", icon: "⚙️", exact: false },
+  { href: "/barista", label: "Order Queue", icon: <Ticket className="w-5 h-5 text-gray-500" />, exact: false },
+  { href: "/dashboard", label: "Overview", icon: <BarChart3 className="w-5 h-5 text-indigo-500" />, exact: true },
+  { href: "/dashboard/products", label: "Products", icon: <Package className="w-5 h-5 text-amber-600" />, exact: false },
+  { href: "/dashboard/ingredients", label: "Ingredients", icon: <FlaskConical className="w-5 h-5 text-emerald-500" />, exact: false },
+  { href: "/dashboard/recipes", label: "Recipes", icon: <ClipboardList className="w-5 h-5 text-blue-500" />, exact: false },
+  { href: "/dashboard/stock", label: "Stock", icon: <Inbox className="w-5 h-5 text-purple-500" />, exact: false },
+  { href: "/dashboard/reconciliation", label: "Reconciliation", icon: <Receipt className="w-5 h-5 text-rose-500" />, exact: false },
+  { href: "/dashboard/users", label: "Users", icon: <Users className="w-5 h-5 text-cyan-600" />, exact: false },
+  { href: "/dashboard/settings", label: "Settings", icon: <Settings className="w-5 h-5 text-gray-700" />, exact: false },
 ];
 
 export default function DashboardLayout({

@@ -8,13 +8,14 @@ import { createClient } from "@/lib/supabase/browser";
 import { submitOrder, adminUploadFile } from "@/lib/domain/orders";
 import { formatCurrency } from "@/lib/utils";
 import type { ProductWithStock, PaymentMethod } from "@/lib/types";
+import { Snowflake, Banknote, Smartphone, QrCode, Landmark, CreditCard } from "lucide-react";
 
-const ALL_PAYMENT_OPTIONS: { value: PaymentMethod; label: string; icon: string }[] = [
-  { value: "cash", label: "Cash", icon: "💵" },
-  { value: "gcash", label: "GCash", icon: "📱" },
-  { value: "qr_code", label: "QR Code", icon: "🔳" },
-  { value: "bank_transfer", label: "Bank Transfer", icon: "🏦" },
-  { value: "hitpay", label: "HitPay", icon: "💳" },
+const ALL_PAYMENT_OPTIONS: { value: PaymentMethod; label: string; icon: React.ReactNode }[] = [
+  { value: "cash", label: "Cash", icon: <Banknote className="w-5 h-5 text-green-600" /> },
+  { value: "gcash", label: "GCash", icon: <Smartphone className="w-5 h-5 text-blue-600" /> },
+  { value: "qr_code", label: "QR Code", icon: <QrCode className="w-5 h-5 text-gray-800" /> },
+  { value: "bank_transfer", label: "Bank Transfer", icon: <Landmark className="w-5 h-5 text-indigo-600" /> },
+  { value: "hitpay", label: "HitPay", icon: <CreditCard className="w-5 h-5 text-purple-600" /> },
 ];
 
 export default function FridgePage() {
@@ -179,7 +180,7 @@ export default function FridgePage() {
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <span className="text-3xl">🧊</span> Fridge & Honesty Store
+          <Snowflake className="w-8 h-8 text-blue-500" /> Fridge & Honesty Store
         </h1>
         <p className="text-gray-500">Grab what you need, select your payment method, and go!</p>
       </div>
@@ -255,12 +256,12 @@ export default function FridgePage() {
                 <button
                   key={opt.value}
                   onClick={() => setPaymentMethod(opt.value)}
-                  className={`flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-all border ${paymentMethod === opt.value
+                  className={`flex flex-col items-center justify-center flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-all border ${paymentMethod === opt.value
                     ? "bg-amber-50 border-amber-300 text-amber-700"
                     : "bg-white border-gray-200 text-gray-500 hover:bg-gray-50"
                     }`}
                 >
-                  <span className="block text-lg mb-0.5">{opt.icon}</span>
+                  <span className="mb-0.5">{opt.icon}</span>
                   {opt.label}
                 </button>
               ))}
