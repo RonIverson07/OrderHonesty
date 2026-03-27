@@ -5,6 +5,9 @@ import { createClient } from "@/lib/supabase/browser";
 import { adminSaveProduct, adminDeleteProduct, adminToggleProductStatus } from "@/lib/domain/orders";
 import { formatCurrency, getImageUrl } from "@/lib/utils";
 import type { ProductWithStock } from "@/lib/types";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+
+const PAGE_SIZE = 10;
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<ProductWithStock[]>([]);
@@ -14,10 +17,18 @@ export default function ProductsPage() {
   const [formType, setFormType] = useState<"cafe" | "retail">("retail");
   const [message, setMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [page, setPage] = useState(0);
 
-  const filteredProducts = products.filter(p => 
+  const filteredProducts = products.filter(p =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  useEffect(() => { setPage(0); }, [searchTerm]);
+
+  const totalPages = Math.ceil(filteredProducts.length / PAGE_SIZE);
+  const paginatedProducts = filteredProducts.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
+  const from = filteredProducts.length === 0 ? 0 : page * PAGE_SIZE + 1;
+  const to = Math.min(page * PAGE_SIZE + PAGE_SIZE, filteredProducts.length);
 
   useEffect(() => {
     loadProducts();
@@ -54,7 +65,7 @@ export default function ProductsPage() {
         console.log("[Client] Submitting product form...");
         const result = await adminSaveProduct(formData);
         console.log("[Client] Save result:", result);
-        
+
         if (result && result.success) {
           setMessage("✅ Product saved successfully");
           setShowForm(false);
@@ -117,7 +128,7 @@ export default function ProductsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Products</h1>
           <p className="text-sm text-gray-500">Manage fridge items and café drinks</p>
         </div>
-        
+
         <div className="flex-1 flex justify-center max-w-sm">
           <div className="relative w-full">
             <input
@@ -167,70 +178,103 @@ export default function ProductsPage() {
             </tr>
           </thead>
           <tbody>
-            {filteredProducts.map((p) => (
-              <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-25">
-                <td className="py-3 px-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center text-base overflow-hidden border border-gray-100 shrink-0 shadow-sm">
-                      {p.image_url ? (
-                        <img src={getImageUrl(p.image_url) ?? ""} alt={p.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <span>{p.type === "cafe" ? "☕" : "🧊"}</span>
-                      )}
-                    </div>
-                    <span className="font-medium text-gray-900 truncate">{p.name}</span>
-                  </div>
-                </td>
-                <td className="py-3 px-4">
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                    p.type === "cafe" ? "bg-amber-50 text-amber-700" : "bg-blue-50 text-blue-700"
-                  }`}>
-                    {p.type}
-                  </span>
-                </td>
-                <td className="py-3 px-4 text-right font-medium">{formatCurrency(p.selling_price)}</td>
-                <td className="py-3 px-4 text-right text-gray-500">
-                  {p.base_cost ? formatCurrency(p.base_cost) : "—"}
-                </td>
-                <td className="py-3 px-4 text-center">
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                    p.active ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-500"
-                  }`}>
-                    {p.active ? "Active" : "Inactive"}
-                  </span>
-                </td>
-                <td className="py-3 px-4 text-right text-gray-900 font-medium">
-                  {p.retail_stock?.stock ?? 0}
-                </td>
-                <td className="py-3 px-4 text-right text-amber-600 font-medium">
-                  {p.low_stock_threshold ?? 0}
-                </td>
-                <td className="py-3 px-4 text-right">
-                  <div className="flex justify-end gap-3">
-                    <button
-                      onClick={() => handleToggle(p.id, p.active)}
-                      className={`text-sm font-medium ${p.active ? "text-gray-500 hover:text-gray-700 underline" : "text-emerald-600 hover:text-emerald-700 font-bold"}`}
-                    >
-                      {p.active ? "Deactivate" : "Activate"}
-                    </button>
-                    <button
-                      onClick={() => openEdit(p)}
-                      className="text-sm text-amber-600 hover:text-amber-700 font-medium"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(p.id, p.name)}
-                      className="text-sm text-red-600 hover:text-red-700 font-medium"
-                    >
-                      Delete
-                    </button>
-                  </div>
+            {paginatedProducts.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="py-10 text-center text-sm text-gray-400">
+                  {searchTerm ? `No products matching "${searchTerm}"` : "No products yet."}
                 </td>
               </tr>
-            ))}
+            ) : (
+              paginatedProducts.map((p) => (
+                <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-25">
+                  <td className="py-3 px-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center text-base overflow-hidden border border-gray-100 shrink-0 shadow-sm">
+                        {p.image_url ? (
+                          <img src={getImageUrl(p.image_url) ?? ""} alt={p.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <span>{p.type === "cafe" ? "☕" : "🧊"}</span>
+                        )}
+                      </div>
+                      <span className="font-medium text-gray-900 truncate">{p.name}</span>
+                    </div>
+                  </td>
+                  <td className="py-3 px-4">
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${p.type === "cafe" ? "bg-amber-50 text-amber-700" : "bg-blue-50 text-blue-700"
+                      }`}>
+                      {p.type}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 text-right font-medium">{formatCurrency(p.selling_price)}</td>
+                  <td className="py-3 px-4 text-right text-gray-500">
+                    {p.base_cost ? formatCurrency(p.base_cost) : "—"}
+                  </td>
+                  <td className="py-3 px-4 text-center">
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${p.active ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-500"
+                      }`}>
+                      {p.active ? "Active" : "Inactive"}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 text-right text-gray-900 font-medium">
+                    {p.retail_stock?.stock ?? 0}
+                  </td>
+                  <td className="py-3 px-4 text-right text-amber-600 font-medium">
+                    {p.low_stock_threshold ?? 0}
+                  </td>
+                  <td className="py-3 px-4 text-right">
+                    <div className="flex justify-end gap-3">
+                      <button
+                        onClick={() => handleToggle(p.id, p.active)}
+                        className={`text-sm font-medium ${p.active ? "text-gray-500 hover:text-gray-700 underline" : "text-emerald-600 hover:text-emerald-700 font-bold"}`}
+                      >
+                        {p.active ? "Deactivate" : "Activate"}
+                      </button>
+                      <button
+                        onClick={() => openEdit(p)}
+                        className="text-sm text-amber-600 hover:text-amber-700 font-medium"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(p.id, p.name)}
+                        className="text-sm text-red-600 hover:text-red-700 font-medium"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
+
+        {filteredProducts.length > 0 && (
+          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 bg-gray-50">
+            <span className="text-xs text-gray-500">
+              Showing {from}–{to} of {filteredProducts.length} product{filteredProducts.length !== 1 ? "s" : ""}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                disabled={page === 0}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-200 text-gray-600 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" /> Previous
+              </button>
+              <span className="text-xs text-gray-500 font-medium px-1">
+                {page + 1} / {Math.max(1, totalPages)}
+              </span>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                disabled={page >= totalPages - 1}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-200 text-gray-600 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Next <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Modal Form */}
@@ -269,12 +313,12 @@ export default function ProductsPage() {
                   <input name="low_stock_threshold" type="number" defaultValue={editing?.low_stock_threshold ?? ""} className="input" />
                 </div>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Image URL</label>
                 <input name="image_url" type="url" defaultValue={editing?.image_url ?? ""} className="input" placeholder="Optional" />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Upload Photo</label>
                 <input name="image_file" type="file" accept="image/*" className="input text-xs" />
