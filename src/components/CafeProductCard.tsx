@@ -2,25 +2,19 @@
 
 import { useState } from "react";
 import { formatCurrency, getImageUrl } from "@/lib/utils";
-import type { ProductWithStock } from "@/lib/types";
+import type { CafeProductAvailability } from "@/lib/types";
 
-interface ProductCardProps {
-  product: ProductWithStock;
+interface CafeProductCardProps {
+  product: CafeProductAvailability;
   qty: number;
   onQtyChange: (qty: number) => void;
-  showStock?: boolean;
-  disabled?: boolean;
-  unavailableReason?: string;
 }
 
-export default function ProductCard({
+export default function CafeProductCard({
   product,
   qty,
   onQtyChange,
-  showStock = false,
-  disabled = false,
-  unavailableReason,
-}: ProductCardProps) {
+}: CafeProductCardProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalQty, setModalQty] = useState(0);
 
@@ -34,15 +28,14 @@ export default function ProductCard({
     onQtyChange(modalQty);
     setIsModalOpen(false);
   };
-  const stock = product.retail_stock?.stock ?? null;
-  const isOutOfStock = showStock && stock !== null && stock <= 0;
-  const isDisabled = disabled || isOutOfStock;
-  const maxQty = showStock && stock !== null ? stock : undefined;
+  const isOutOfStock = !product.available;
+  const isDisabled = isOutOfStock;
+  const maxQty = product.max_servings;
 
   return (
     <div
       className={`card overflow-hidden animate-slide-in ${
-        isDisabled ? "opacity-60" : ""
+        isOutOfStock ? "opacity-60" : ""
       }`}
     >
       {/* Image Container with Zoom Affordance */}
@@ -75,22 +68,12 @@ export default function ProductCard({
         {/* Status badges */}
         {isOutOfStock && (
           <div className="absolute top-2 right-2 px-2 py-1 rounded-full bg-red-500 text-white text-xs font-semibold">
-            Out of Stock
-          </div>
-        )}
-        {showStock && stock !== null && stock > 0 && stock <= (product.low_stock_threshold ?? 5) && (
-          <div className="absolute top-2 right-2 px-2 py-1 rounded-full bg-amber-500 text-white text-xs font-semibold">
-            Low Stock
-          </div>
-        )}
-        {!isOutOfStock && showStock && stock !== null && stock > (product.low_stock_threshold ?? 5) && (
-          <div className="absolute top-2 right-2 px-2 py-1 rounded-full bg-white/90 backdrop-blur text-gray-600 text-xs font-medium">
-            {stock} left
-          </div>
-        )}
-        {unavailableReason && (
-          <div className="absolute top-2 right-2 px-2 py-1 rounded-full bg-red-500 text-white text-xs font-semibold">
             Unavailable
+          </div>
+        )}
+        {!isOutOfStock && maxQty !== undefined && maxQty > 0 && maxQty <= 5 && (
+          <div className="absolute top-2 right-2 px-2 py-1 rounded-full bg-amber-500 text-white text-xs font-semibold">
+            {maxQty} left
           </div>
         )}
       </div>
@@ -100,8 +83,8 @@ export default function ProductCard({
         <div className="flex items-start justify-between mb-1">
           <h3 className="text-sm font-semibold text-gray-900">{product.name}</h3>
         </div>
-        {unavailableReason && (
-          <p className="text-xs text-red-500 mb-2">{unavailableReason}</p>
+        {product.unavailable_reason && (
+          <p className="text-xs text-red-500 mb-2">{product.unavailable_reason}</p>
         )}
         <p className="text-lg font-bold text-amber-600 mb-3">
           {formatCurrency(product.selling_price)}
@@ -176,19 +159,17 @@ export default function ProductCard({
             <div className="w-full md:w-1/2 p-6 md:p-8 flex flex-col justify-between">
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <span className={`px-2.5 py-1 text-[10px] uppercase tracking-wider font-bold rounded-full ${
-                    product.type === "cafe" ? "bg-amber-100 text-amber-800" : "bg-blue-100 text-blue-800"
-                  }`}>
-                    {product.type === "cafe" ? "☕ Handcrafted" : "❄️ Chilled Drink"}
+                  <span className={`px-2.5 py-1 text-[10px] uppercase tracking-wider font-bold rounded-full bg-amber-100 text-amber-800`}>
+                    ☕ Handcrafted
                   </span>
-                  {showStock && stock !== null && stock > 0 && stock <= (product.low_stock_threshold ?? 5) && (
+                  {!isOutOfStock && maxQty !== undefined && maxQty > 0 && maxQty <= 5 && (
                     <span className="px-2.5 py-1 text-[10px] uppercase tracking-wider font-bold rounded-full bg-orange-100 text-orange-800">
-                      ⚡ Low Stock
+                      ⚡ Low Ingredients
                     </span>
                   )}
                   {isOutOfStock && (
                     <span className="px-2.5 py-1 text-[10px] uppercase tracking-wider font-bold rounded-full bg-red-100 text-red-800">
-                      🚨 Sold Out
+                      🚨 Unavailable
                     </span>
                   )}
                 </div>
@@ -196,8 +177,8 @@ export default function ProductCard({
                 <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900 mb-1 leading-tight">{product.name}</h2>
                 <div className="flex items-baseline justify-between mb-8">
                   <p className="text-xl md:text-2xl font-bold text-amber-600">{formatCurrency(product.selling_price)}</p>
-                  {showStock && stock !== null && stock > 0 && (
-                    <p className="text-sm font-medium text-gray-500">{stock} available</p>
+                  {!isOutOfStock && maxQty !== undefined && maxQty > 0 && (
+                    <p className="text-sm font-medium text-gray-500">Max {maxQty} servings</p>
                   )}
                 </div>
 

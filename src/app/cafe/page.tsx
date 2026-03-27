@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useTransition, useRef } from "react";
 import OrderSnapshot from "@/components/OrderSnapshot";
+import CafeProductCard from "@/components/CafeProductCard";
 import Skeleton from "@/components/Skeleton";
 import { createClient } from "@/lib/supabase/browser";
 import { submitOrder, adminUploadFile } from "@/lib/domain/orders";
@@ -29,7 +30,6 @@ export default function CafePage() {
   const [errorMsg, setErrorMsg] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [zoomImage, setZoomImage] = useState<{ url: string; title: string } | null>(null);
   const isSubmitting = useRef(false);
 
   useEffect(() => {
@@ -228,84 +228,14 @@ export default function CafePage() {
       {/* Product Grid */}
       {!isLoading && (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
-          {products.filter(p => p.available && (p.max_servings === undefined || p.max_servings > 0)).map((product) => {
-            const isUnavailable = !product.available;
-            return (
-              <div
-                key={product.id}
-                className={`card overflow-hidden animate-slide-in ${isUnavailable ? "opacity-60" : ""}`}
-              >
-                {/* Image Container with Zoom Affordance */}
-                <div
-                  className={`aspect-[4/3] bg-gradient-to-br from-amber-50 to-orange-50 relative group ${product.image_url && !isUnavailable ? "cursor-zoom-in" : ""}`}
-                  onClick={() => {
-                    if (product.image_url && !isUnavailable) {
-                      setZoomImage({ url: product.image_url, title: product.name });
-                    }
-                  }}
-                >
-                  {product.image_url ? (
-                    <>
-                      <img
-                        src={getImageUrl(product.image_url) ?? ""}
-                        alt={product.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                      {!isUnavailable && (
-                        <div className="absolute inset-0 bg-black/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <span className="bg-white/90 text-gray-800 p-2 rounded-full shadow-md text-xl">🔍</span>
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <span className="text-4xl opacity-40">☕</span>
-                    </div>
-                  )}
-                  {isUnavailable && (
-                    <div className="absolute top-2 right-2 px-2 py-1 rounded-full bg-red-500 text-white text-xs font-semibold">
-                      Unavailable
-                    </div>
-                  )}
-                  {product.available && product.max_servings !== undefined && product.max_servings <= 5 && product.max_servings > 0 && (
-                    <div className="absolute top-2 right-2 px-2 py-1 rounded-full bg-amber-500 text-white text-xs font-semibold">
-                      {product.max_servings} left
-                    </div>
-                  )}
-                </div>
-
-                {/* Content */}
-                <div className="p-4">
-                  <h3 className="text-sm font-semibold text-gray-900 mb-0.5">{product.name}</h3>
-                  {isUnavailable && product.unavailable_reason && (
-                    <p className="text-xs text-red-500 mb-1">{product.unavailable_reason}</p>
-                  )}
-                  <p className="text-lg font-bold text-amber-600 mb-3">{formatCurrency(product.selling_price)}</p>
-
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 bg-gray-100 rounded-lg p-1">
-                      <button
-                        onClick={() => setQty(product.id, Math.max(0, (quantities[product.id] ?? 0) - 1))}
-                        className="w-8 h-8 flex items-center justify-center rounded-md text-gray-500 hover:bg-white hover:shadow-sm transition-all disabled:opacity-30"
-                        disabled={(quantities[product.id] ?? 0) === 0 || isUnavailable}
-                      >−</button>
-                      <span className="w-8 text-center text-sm font-semibold tabular-nums">{quantities[product.id] ?? 0}</span>
-                      <button
-                        onClick={() => setQty(product.id, (quantities[product.id] ?? 0) + 1)}
-                        className="w-8 h-8 flex items-center justify-center rounded-md text-gray-500 hover:bg-white hover:shadow-sm transition-all disabled:opacity-30"
-                        disabled={isUnavailable}
-                      >+</button>
-                    </div>
-                    {(quantities[product.id] ?? 0) > 0 && (
-                      <span className="text-sm font-semibold text-amber-600">
-                        {formatCurrency(product.selling_price * (quantities[product.id] ?? 0))}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {products.filter(p => p.available && (p.max_servings === undefined || p.max_servings > 0)).map((product) => (
+            <CafeProductCard
+              key={product.id}
+              product={product}
+              qty={quantities[product.id] ?? 0}
+              onQtyChange={(qty) => setQty(product.id, qty)}
+            />
+          ))}
         </div>
       )}
 
@@ -359,21 +289,48 @@ export default function CafePage() {
           </div>
           {/* QR Code Helper for GCash */}
           {paymentMethod === "gcash" && (
-            <div className="mb-4 p-4 rounded-xl bg-amber-50 border border-amber-200 animate-slide-in">
-              <p className="text-xs font-bold text-amber-800 mb-2 uppercase tracking-wider flex items-center gap-1.5">
-                <span className="text-lg">🔳</span> Scan to Pay (GCash)
-              </p>
-              <div className="aspect-square w-full max-w-[320px] mx-auto bg-white rounded-lg p-2 shadow-sm border border-amber-100 overflow-hidden">
-                <img
-                  src="/gcashqr.jpeg"
-                  alt="GCash QR Code"
-                  className="w-full h-full object-contain"
-                />
+            <div className="mb-4 p-4 md:p-5 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 animate-slide-in">
+              <div className="flex flex-col sm:flex-row gap-8 md:gap-12 items-center justify-center mb-6 mt-2 max-w-4xl mx-auto">
+                {/* Left: QR Code */}
+                <div className="w-full sm:max-w-[380px] shrink-0 flex justify-center">
+                  <div className="w-full max-w-[380px] aspect-square bg-white rounded-[24px] p-5 border border-amber-100 shadow-md overflow-hidden flex items-center justify-center">
+                    <img
+                      src="/gcashqr.jpeg"
+                      alt="GCash QR Code"
+                      className="w-full h-full object-contain mix-blend-multiply"
+                    />
+                  </div>
+                </div>
+
+                {/* Right: How to Pay */}
+                <div className="w-full sm:max-w-[380px] flex flex-col justify-center py-4">
+                  <h4 className="text-base md:text-lg font-black text-amber-900 flex items-center gap-2.5 tracking-widest uppercase mb-6">
+                    <span className="w-7 h-7 rounded-full border-2 border-amber-600 text-amber-600 flex items-center justify-center text-sm font-bold">i</span>
+                    How to Pay
+                  </h4>
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-4">
+                      <span className="shrink-0 w-9 h-9 rounded-lg bg-amber-200 text-amber-900 font-bold flex items-center justify-center text-base shadow-sm opacity-90">1</span>
+                      <p className="text-base md:text-lg text-gray-800 font-medium leading-snug">Open <strong className="text-blue-600">GCash</strong> and tap 'Scan QR'</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <span className="shrink-0 w-9 h-9 rounded-lg bg-amber-200 text-amber-900 font-bold flex items-center justify-center text-base shadow-sm opacity-90">2</span>
+                      <p className="text-base md:text-lg text-gray-800 font-medium leading-snug">Scan the code on the left</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <span className="shrink-0 w-9 h-9 rounded-lg bg-amber-200 text-amber-900 font-bold flex items-center justify-center text-base shadow-sm opacity-90">3</span>
+                      <p className="text-base md:text-lg text-gray-800 font-medium leading-snug">Enter exact amount and confirm</p>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <p className="text-[11px] text-amber-700 mt-3 text-center font-medium leading-relaxed bg-amber-100/40 p-2.5 rounded-lg border border-amber-200/50 shadow-sm mx-1">
-                Get ready to take a fun selfie with your payment proof! 📸 <br />
-                After paying, click <strong className="text-amber-900 font-bold">Submit Order</strong> or message us your proof at <a href="https://www.facebook.com/StartupLabAI" target="_blank" rel="noopener noreferrer" className="underline font-bold text-amber-900 hover:text-amber-700 transition-colors">StartupLabAI</a> ✨
-              </p>
+
+              <div className="pt-4 border-t border-amber-200/60">
+                <p className="text-[11px] text-amber-800 mt-1 text-center font-medium leading-relaxed bg-amber-100/50 p-3 rounded-xl border border-amber-200/50 shadow-sm">
+                  Get ready to take a fun selfie with your payment proof! 📸 <br />
+                  After paying, click <strong className="text-amber-900 font-bold">Submit Order</strong> or message us your proof at <a href="https://www.facebook.com/StartupLabAI" target="_blank" rel="noopener noreferrer" className="underline font-bold text-amber-900 hover:text-amber-700 transition-colors">StartupLabAI</a> ✨
+                </p>
+              </div>
             </div>
           )}
 
@@ -443,28 +400,6 @@ export default function CafePage() {
         </div>
       )}
 
-      {/* Floating Zoom Modal */}
-      {zoomImage && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in"
-          onClick={(e) => { e.stopPropagation(); setZoomImage(null); }}
-        >
-          <div className="relative max-w-3xl max-h-[90vh] w-full flex items-center justify-center">
-            <button
-              className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors"
-              onClick={(e) => { e.stopPropagation(); setZoomImage(null); }}
-            >
-              <span className="text-sm font-medium tracking-wider uppercase bg-white/20 hover:bg-white/30 transition px-4 py-1.5 rounded-full">✕ Close</span>
-            </button>
-            <img
-              src={getImageUrl(zoomImage.url) ?? ""}
-              alt={zoomImage.title}
-              className="w-full h-auto max-h-[85vh] object-contain rounded-xl shadow-2xl scale-100 animate-in zoom-in-95 duration-200"
-              onClick={(e) => e.stopPropagation()}
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 }

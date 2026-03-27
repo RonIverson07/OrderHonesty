@@ -268,21 +268,48 @@ export default function FridgePage() {
           </div>
           {/* QR Code Helper for GCash */}
           {paymentMethod === "gcash" && (
-            <div className="mb-4 p-4 rounded-xl bg-amber-50 border border-amber-200 animate-slide-in">
-              <p className="text-xs font-bold text-amber-800 mb-2 uppercase tracking-wider flex items-center gap-1.5">
-                <span className="text-lg">🔳</span> Scan to Pay (GCash)
-              </p>
-              <div className="w-full max-w-[350px] mx-auto bg-white rounded-lg p-2 shadow-sm border border-amber-100 overflow-hidden">
-                <img
-                  src="/gcashqr.jpeg"
-                  alt="GCash QR Code"
-                  className="w-full h-auto object-contain"
-                />
+            <div className="mb-4 p-4 md:p-5 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 animate-slide-in">
+              <div className="flex flex-col sm:flex-row gap-8 md:gap-12 items-center justify-center mb-6 mt-2 max-w-4xl mx-auto">
+                {/* Left: QR Code */}
+                <div className="w-full sm:max-w-[380px] shrink-0 flex justify-center">
+                  <div className="w-full max-w-[380px] aspect-square bg-white rounded-[24px] p-5 border border-amber-100 shadow-md overflow-hidden flex items-center justify-center">
+                    <img
+                      src="/gcashqr.jpeg"
+                      alt="GCash QR Code"
+                      className="w-full h-full object-contain mix-blend-multiply"
+                    />
+                  </div>
+                </div>
+
+                {/* Right: How to Pay */}
+                <div className="w-full sm:max-w-[380px] flex flex-col justify-center py-4">
+                  <h4 className="text-base md:text-lg font-black text-amber-900 flex items-center gap-2.5 tracking-widest uppercase mb-6">
+                    <span className="w-7 h-7 rounded-full border-2 border-amber-600 text-amber-600 flex items-center justify-center text-sm font-bold">i</span>
+                    How to Pay
+                  </h4>
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-4">
+                      <span className="shrink-0 w-9 h-9 rounded-lg bg-amber-200 text-amber-900 font-bold flex items-center justify-center text-base shadow-sm opacity-90">1</span>
+                      <p className="text-base md:text-lg text-gray-800 font-medium leading-snug">Open <strong className="text-blue-600">GCash</strong> and tap 'Scan QR'</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <span className="shrink-0 w-9 h-9 rounded-lg bg-amber-200 text-amber-900 font-bold flex items-center justify-center text-base shadow-sm opacity-90">2</span>
+                      <p className="text-base md:text-lg text-gray-800 font-medium leading-snug">Scan the code on the left</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <span className="shrink-0 w-9 h-9 rounded-lg bg-amber-200 text-amber-900 font-bold flex items-center justify-center text-base shadow-sm opacity-90">3</span>
+                      <p className="text-base md:text-lg text-gray-800 font-medium leading-snug">Enter exact amount and confirm</p>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <p className="text-[11px] text-amber-700 mt-3 text-center font-medium leading-relaxed bg-amber-100/40 p-2.5 rounded-lg border border-amber-200/50 shadow-sm mx-1">
-                Get ready to take a fun selfie with your payment proof! 📸 <br />
-                After paying, click <strong className="text-amber-900 font-bold">Submit Order</strong> or message us your proof at <a href="https://www.facebook.com/StartupLabAI" target="_blank" rel="noopener noreferrer" className="underline font-bold text-amber-900 hover:text-amber-700 transition-colors">StartupLabAI</a> ✨
-              </p>
+
+              <div className="pt-4 border-t border-amber-200/60">
+                <p className="text-[11px] text-amber-800 mt-1 text-center font-medium leading-relaxed bg-amber-100/50 p-3 rounded-xl border border-amber-200/50 shadow-sm">
+                  Get ready to take a fun selfie with your payment proof! 📸 <br />
+                  After paying, click <strong className="text-amber-900 font-bold">Submit Order</strong> or message us your proof at <a href="https://www.facebook.com/StartupLabAI" target="_blank" rel="noopener noreferrer" className="underline font-bold text-amber-900 hover:text-amber-700 transition-colors">StartupLabAI</a> ✨
+                </p>
+              </div>
             </div>
           )}
 
