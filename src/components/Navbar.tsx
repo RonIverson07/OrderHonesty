@@ -94,14 +94,10 @@ export default function Navbar() {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5 group">
             <img 
-              src="/startuplogo.jpg" 
+              src="/startuplogo.png" 
               alt="StartupLab Logo"
-              className="h-8 w-auto object-contain transition-transform group-hover:scale-105 drop-shadow-sm" 
+              className="h-10 sm:h-12 lg:h-14 w-auto object-contain transition-transform group-hover:scale-105 drop-shadow-sm" 
             />
-            <div className="flex flex-col leading-tight">
-              <span className="text-[10px] font-medium text-gray-400 tracking-wider uppercase">StartupLab</span>
-              <span className="text-sm font-bold text-gray-800 tracking-tight">Labrew</span>
-            </div>
           </Link>
 
           {/* Nav Links */}

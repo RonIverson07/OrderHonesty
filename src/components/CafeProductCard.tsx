@@ -18,8 +18,14 @@ export default function CafeProductCard({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalQty, setModalQty] = useState(0);
 
+  // Image click: add +1 directly (no modal)
+  const handleImageClick = () => {
+    if (isDisabled) return;
+    const next = maxQty !== undefined ? Math.min(maxQty, qty + 1) : qty + 1;
+    onQtyChange(next);
+  };
+
   const openModal = () => {
-    // If they already have an order for this, start with that qty; otherwise default to 1 for quick adding
     setModalQty(qty > 0 ? qty : 1);
     setIsModalOpen(true);
   };
@@ -34,14 +40,14 @@ export default function CafeProductCard({
 
   return (
     <div
-      className={`card overflow-hidden animate-slide-in ${
-        isOutOfStock ? "opacity-60" : ""
-      }`}
+      className={`card overflow-hidden animate-slide-in ${isOutOfStock ? "opacity-60" : ""
+        }`}
     >
-      {/* Image Container with Zoom Affordance */}
-      <div 
-        className={`aspect-[4/3] bg-gradient-to-br from-amber-50 to-orange-50 relative overflow-hidden cursor-pointer group`}
-        onClick={openModal}
+      {/* Image Container — click to add +1 */}
+      <div
+        className={`aspect-[4/3] bg-gradient-to-br from-amber-50 to-orange-50 relative overflow-hidden ${isDisabled ? "cursor-not-allowed" : "cursor-pointer group"
+          }`}
+        onClick={handleImageClick}
       >
         {product.image_url ? (
           <>
@@ -50,12 +56,14 @@ export default function CafeProductCard({
               alt={product.name}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
-            {/* Hover overlay hint */}
-            <div className="absolute inset-0 bg-black/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-              <span className="bg-white/90 text-gray-800 p-2 rounded-full shadow-md text-xl">
-                🔍
-              </span>
-            </div>
+            {/* Hover overlay: tap to add */}
+            {!isDisabled && (
+              <div className="absolute inset-0 bg-black/15 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <span className="bg-white/95 text-gray-800 w-11 h-11 flex items-center justify-center rounded-full shadow-lg text-2xl font-bold leading-none">
+                  +
+                </span>
+              </div>
+            )}
           </>
         ) : (
           <div className="w-full h-full flex items-center justify-center">
@@ -124,16 +132,16 @@ export default function CafeProductCard({
 
       {/* Kiosk-style Product Modal */}
       {isModalOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in zoom-in duration-200"
           onClick={(e) => { e.stopPropagation(); setIsModalOpen(false); }}
         >
-          <div 
+          <div
             className="relative bg-white rounded-3xl shadow-2xl overflow-hidden max-w-[340px] md:max-w-3xl w-full flex flex-col md:flex-row animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close Button X */}
-            <button 
+            <button
               className="absolute top-4 right-4 z-10 w-9 h-9 flex items-center justify-center bg-black/10 hover:bg-black/20 text-gray-800 rounded-full transition-colors"
               onClick={(e) => { e.stopPropagation(); setIsModalOpen(false); }}
             >
@@ -143,9 +151,9 @@ export default function CafeProductCard({
             {/* Left/Top: Image section */}
             <div className="w-full md:w-1/2 bg-gradient-to-br from-amber-50 to-orange-50 aspect-square md:aspect-auto flex items-center justify-center relative overflow-hidden">
               {product.image_url ? (
-                <img 
-                  src={getImageUrl(product.image_url) ?? ""} 
-                  alt={product.name} 
+                <img
+                  src={getImageUrl(product.image_url) ?? ""}
+                  alt={product.name}
                   className="w-full h-full object-cover"
                 />
               ) : (
@@ -185,7 +193,7 @@ export default function CafeProductCard({
                 {/* Modal Auto-Quantity Counter Simulator */}
                 <div className="flex flex-col items-center justify-center pt-2 pb-6">
                   <div className="flex items-center gap-6">
-                    <button 
+                    <button
                       onClick={() => setModalQty(Math.max(0, modalQty - 1))}
                       className="w-14 h-14 rounded-full border-2 border-gray-200 flex items-center justify-center text-3xl font-light text-gray-500 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-300 transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:border-gray-200 disabled:hover:text-gray-500"
                       disabled={modalQty === 0 || isDisabled}
@@ -195,7 +203,7 @@ export default function CafeProductCard({
                     <span className="text-4xl font-black w-14 text-center tabular-nums text-gray-900">
                       {modalQty}
                     </span>
-                    <button 
+                    <button
                       onClick={() => setModalQty(maxQty !== undefined ? Math.min(maxQty, modalQty + 1) : modalQty + 1)}
                       className="w-14 h-14 rounded-full border-2 border-gray-200 flex items-center justify-center text-3xl font-light text-gray-500 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-300 transition-colors disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:border-gray-200 disabled:hover:text-gray-500"
                       disabled={isDisabled || (maxQty !== undefined && modalQty >= maxQty)}
@@ -209,15 +217,14 @@ export default function CafeProductCard({
               {/* Action Button */}
               <button
                 onClick={handleApplyOrder}
-                className={`w-full py-4 rounded-2xl text-lg font-bold shadow-lg transition-all active:scale-[0.98] ${
-                  modalQty > 0 
-                    ? 'bg-amber-500 hover:bg-amber-600 text-white border border-amber-600' 
-                    : 'bg-red-50 hover:bg-red-100 text-red-600 border border-red-200'
-                }`}
+                className={`w-full py-4 rounded-2xl text-lg font-bold shadow-lg transition-all active:scale-[0.98] ${modalQty > 0
+                  ? 'bg-amber-500 hover:bg-amber-600 text-white border border-amber-600'
+                  : 'bg-red-50 hover:bg-red-100 text-red-600 border border-red-200'
+                  }`}
               >
-                {modalQty === 0 
-                  ? "Remove from Order" 
-                  : qty > 0 
+                {modalQty === 0
+                  ? "Remove from Order"
+                  : qty > 0
                     ? `Update Order — ${formatCurrency(product.selling_price * modalQty)}`
                     : `Add to Order — ${formatCurrency(product.selling_price * modalQty)}`
                 }
