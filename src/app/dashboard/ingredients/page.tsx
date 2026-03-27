@@ -4,6 +4,9 @@ import { useState, useEffect, useTransition } from "react";
 import { createClient } from "@/lib/supabase/browser";
 import { adminSaveIngredient, adminDeleteIngredient } from "@/lib/domain/orders";
 import type { Ingredient } from "@/lib/types";
+import { Search, ChevronLeft, ChevronRight } from "lucide-react";
+
+const PAGE_SIZE = 10;
 
 export default function IngredientsPage() {
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
@@ -11,8 +14,13 @@ export default function IngredientsPage() {
   const [editing, setEditing] = useState<Ingredient | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [message, setMessage] = useState("");
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(0);
 
   useEffect(() => { loadIngredients(); }, []);
+
+  // Reset to page 0 whenever search changes
+  useEffect(() => { setPage(0); }, [search]);
 
   async function loadIngredients() {
     try {
@@ -55,6 +63,15 @@ export default function IngredientsPage() {
     });
   };
 
+  // Filtered + paginated
+  const filtered = ingredients.filter((i) =>
+    i.name.toLowerCase().includes(search.toLowerCase())
+  );
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paginated = filtered.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
+  const from = filtered.length === 0 ? 0 : page * PAGE_SIZE + 1;
+  const to = Math.min(page * PAGE_SIZE + PAGE_SIZE, filtered.length);
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -73,6 +90,18 @@ export default function IngredientsPage() {
         </div>
       )}
 
+      {/* Search bar */}
+      <div className="mb-4 relative max-w-xs">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+        <input
+          type="text"
+          placeholder="Search ingredients..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition"
+        />
+      </div>
+
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
           <thead>
@@ -87,37 +116,73 @@ export default function IngredientsPage() {
             </tr>
           </thead>
           <tbody>
-            {ingredients.map((i) => {
-              const isLow = i.stock <= i.low_stock_threshold;
-              return (
-                <tr key={i.id} className="border-b border-gray-50">
-                  <td className="py-3 px-4 font-medium text-gray-900">{i.name}</td>
-                  <td className="py-3 px-4 text-gray-500">{i.unit}</td>
-                  <td className="py-3 px-4 text-right text-gray-500">₱{Number(i.unit_cost).toFixed(4)}</td>
-                  <td className="py-3 px-4 text-right font-medium">{Number(i.stock).toLocaleString()}</td>
-                  <td className="py-3 px-4 text-right text-gray-500">{Number(i.low_stock_threshold).toLocaleString()}</td>
-                  <td className="py-3 px-4 text-center">
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                      isLow ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700"
-                    }`}>
-                      {isLow ? "Low" : "OK"}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-right">
-                    <div className="flex justify-end gap-3">
-                      <button onClick={() => { setEditing(i); setShowForm(true); }} className="text-sm text-amber-600 hover:text-amber-700 font-medium">
-                        Edit
-                      </button>
-                      <button onClick={() => handleDelete(i.id, i.name)} className="text-sm text-red-600 hover:text-red-700 font-medium">
-                        Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
+            {paginated.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="py-10 text-center text-sm text-gray-400">
+                  {search ? `No ingredients matching "${search}"` : "No ingredients yet."}
+                </td>
+              </tr>
+            ) : (
+              paginated.map((i) => {
+                const isLow = i.stock <= i.low_stock_threshold;
+                return (
+                  <tr key={i.id} className="border-b border-gray-50 hover:bg-gray-25">
+                    <td className="py-3 px-4 font-medium text-gray-900">{i.name}</td>
+                    <td className="py-3 px-4 text-gray-500">{i.unit}</td>
+                    <td className="py-3 px-4 text-right text-gray-500">₱{Number(i.unit_cost).toFixed(4)}</td>
+                    <td className="py-3 px-4 text-right font-medium">{Number(i.stock).toLocaleString()}</td>
+                    <td className="py-3 px-4 text-right text-gray-500">{Number(i.low_stock_threshold).toLocaleString()}</td>
+                    <td className="py-3 px-4 text-center">
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                        isLow ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700"
+                      }`}>
+                        {isLow ? "Low" : "OK"}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <div className="flex justify-end gap-3">
+                        <button onClick={() => { setEditing(i); setShowForm(true); }} className="text-sm text-amber-600 hover:text-amber-700 font-medium">
+                          Edit
+                        </button>
+                        <button onClick={() => handleDelete(i.id, i.name)} className="text-sm text-red-600 hover:text-red-700 font-medium">
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
+
+        {/* Pagination */}
+        {filtered.length > 0 && (
+          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 bg-gray-50">
+            <span className="text-xs text-gray-500">
+              Showing {from}–{to} of {filtered.length} ingredient{filtered.length !== 1 ? "s" : ""}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                disabled={page === 0}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-200 text-gray-600 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" /> Previous
+              </button>
+              <span className="text-xs text-gray-500 font-medium px-1">
+                {page + 1} / {Math.max(1, totalPages)}
+              </span>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                disabled={page >= totalPages - 1}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-200 text-gray-600 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Next <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {showForm && (
@@ -167,3 +232,5 @@ export default function IngredientsPage() {
     </div>
   );
 }
+
+
