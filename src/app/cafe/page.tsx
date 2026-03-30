@@ -307,7 +307,7 @@ export default function CafePage() {
                 <div className="w-full sm:max-w-[380px] shrink-0 flex justify-center">
                   <div className="w-full max-w-[380px] aspect-square bg-white rounded-[24px] p-5 border border-amber-100 shadow-md overflow-hidden flex items-center justify-center">
                     <img
-                      src="/gcashqr.jpeg"
+                      src="/newqr.jpg"
                       alt="GCash QR Code"
                       className="w-full h-full object-contain mix-blend-multiply"
                     />
