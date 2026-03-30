@@ -8,8 +8,21 @@ import type { Product, Ingredient, RetailStock, InventoryMovement } from "@/lib/
 
 type MovementReason = "restock" | "adjustment" | "spoilage";
 
+const PAGE_SIZE = 20;
+
 export default function StockPage() {
   const [retailProducts, setRetailProducts] = useState<(Product & { retail_stock: RetailStock | null })[]>([]);
+  const [filteredRetailProducts, setFilteredRetailProducts] = useState<(Product & { retail_stock: RetailStock | null })[]>([]);
+  const [ingredientSearchTerm, setIngredientSearchTerm] = useState("");
+  const [filteredIngredients, setFilteredIngredients] = useState<Ingredient[]>([]);
+  const [auditSearchTerm, setAuditSearchTerm] = useState("");
+  const [filteredMovements, setFilteredMovements] = useState<InventoryMovement[]>([]);
+
+  const [retailProductPage, setRetailProductPage] = useState(0);
+  const [totalRetailProducts, setTotalRetailProducts] = useState(0);
+  const [ingredientPage, setIngredientPage] = useState(0);
+  const [totalIngredients, setTotalIngredients] = useState(0);
+
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [movements, setMovements] = useState<InventoryMovement[]>([]);
   const [profileMap, setProfileMap] = useState<Record<string, string>>({}); // id -> email
@@ -17,6 +30,7 @@ export default function StockPage() {
   const [totalMovements, setTotalMovements] = useState(0);
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const [modal, setModal] = useState<{
     type: "product" | "ingredient";
     id: string;
@@ -29,13 +43,53 @@ export default function StockPage() {
 
   useEffect(() => { load(); }, []);
   useEffect(() => { loadMovements(); }, [page]);
+  useEffect(() => { load(); }, [retailProductPage]);
+  useEffect(() => { load(); }, [ingredientPage]);
+  useEffect(() => {
+    const filtered = retailProducts.filter(product =>
+      product.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setFilteredRetailProducts(filtered);
+  }, [retailProducts, searchTerm]);
+  useEffect(() => {
+    const filtered = ingredients.filter(ingredient =>
+      ingredient.name.toLowerCase().includes(ingredientSearchTerm.toLowerCase())
+    );
+    setFilteredIngredients(filtered);
+  }, [ingredients, ingredientSearchTerm]);
+  useEffect(() => {
+    const filtered = movements.filter(movement => {
+      const itemName = retailProducts.find(p => p.id === movement.item_id)?.name 
+                    || ingredients.find(i => i.id === movement.item_id)?.name
+                    || "";
+      const performedBy = profileMap[movement.performed_by || ""] || "";
+      const notes = movement.notes || "";
+      
+      return itemName.toLowerCase().includes(auditSearchTerm.toLowerCase()) ||
+             performedBy.toLowerCase().includes(auditSearchTerm.toLowerCase()) ||
+             notes.toLowerCase().includes(auditSearchTerm.toLowerCase()) ||
+             movement.movement_type.toLowerCase().includes(auditSearchTerm.toLowerCase());
+    });
+    setFilteredMovements(filtered);
+  }, [movements, auditSearchTerm, retailProducts, ingredients, profileMap]);
 
   async function load() {
     try {
       const supabase = createClient();
+      
+      // Get total counts first
+      const [{ count: retailCount }, { count: ingredientCount }] = await Promise.all([
+        supabase.from("products").select("*", { count: "exact", head: true }).eq("type", "retail").eq("active", true),
+        supabase.from("ingredients").select("*", { count: "exact", head: true })
+      ]);
+
+      if (retailCount !== null) setTotalRetailProducts(retailCount);
+      if (ingredientCount !== null) setTotalIngredients(ingredientCount);
+
+      // Fetch paginated data
       const [{ data: prods }, { data: ings }] = await Promise.all([
-        supabase.from("products").select("*, retail_stock(*)").eq("type", "retail").eq("active", true).order("name"),
-        supabase.from("ingredients").select("*").order("name")
+        supabase.from("products").select("*, retail_stock(*)").eq("type", "retail").eq("active", true).order("name").range(retailProductPage * PAGE_SIZE, (retailProductPage + 1) * PAGE_SIZE - 1),
+        supabase.from("ingredients").select("*").order("name").range(ingredientPage * PAGE_SIZE, (ingredientPage + 1) * PAGE_SIZE - 1)
       ]);
       setRetailProducts(
         (prods ?? []).map((p: Record<string, unknown>) => ({
@@ -43,7 +97,14 @@ export default function StockPage() {
           retail_stock: Array.isArray(p.retail_stock) ? (p.retail_stock as RetailStock[])[0] ?? null : p.retail_stock,
         })) as (Product & { retail_stock: RetailStock | null })[]
       );
+      setFilteredRetailProducts(
+        (prods ?? []).map((p: Record<string, unknown>) => ({
+          ...p,
+          retail_stock: Array.isArray(p.retail_stock) ? (p.retail_stock as RetailStock[])[0] ?? null : p.retail_stock,
+        })) as (Product & { retail_stock: RetailStock | null })[]
+      );
       setIngredients((ings ?? []) as Ingredient[]);
+      setFilteredIngredients((ings ?? []) as Ingredient[]);
       loadMovements();
     } catch (err) {
       console.error("StockPage load error:", err);
@@ -83,6 +144,7 @@ export default function StockPage() {
 
       if (error) throw error;
       setMovements((moves ?? []) as InventoryMovement[]);
+      setFilteredMovements((moves ?? []) as InventoryMovement[]);
     } catch (err: any) {
       console.error("Movements load error:", err.message || err);
     }
@@ -127,7 +189,37 @@ export default function StockPage() {
       )}
 
       {/* Retail Products */}
-      <h2 className="text-lg font-semibold text-gray-900 mb-3">🧊 Retail Items</h2>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-lg font-semibold text-gray-900">🧊 Retail Items</h2>
+        <div className="flex items-center gap-4">
+          <input
+            type="text"
+            placeholder="Search retail items..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 w-64"
+          />
+          <span className="text-xs text-gray-500 uppercase tracking-wider">
+            {totalRetailProducts > 0 ? `${retailProductPage * PAGE_SIZE + 1}-${Math.min((retailProductPage + 1) * PAGE_SIZE, totalRetailProducts)} of ${totalRetailProducts}` : "No items"}
+          </span>
+          <div className="flex gap-1">
+            <button 
+              onClick={() => setRetailProductPage(p => Math.max(0, p - 1))}
+              disabled={retailProductPage === 0}
+              className="px-2 py-1 rounded bg-white border text-xs shadow-sm hover:bg-gray-50 disabled:opacity-40"
+            >
+              ← Prev
+            </button>
+            <button 
+              onClick={() => setRetailProductPage(p => p + 1)}
+              disabled={(retailProductPage + 1) * PAGE_SIZE >= totalRetailProducts}
+              className="px-2 py-1 rounded bg-white border text-xs shadow-sm hover:bg-gray-50 disabled:opacity-40"
+            >
+              Next →
+            </button>
+          </div>
+        </div>
+      </div>
       <div className="card overflow-hidden mb-8">
         <table className="w-full text-sm">
           <thead>
@@ -140,52 +232,90 @@ export default function StockPage() {
             </tr>
           </thead>
           <tbody>
-            {retailProducts.map((p) => {
-              const stock = p.retail_stock?.stock ?? 0;
-              const threshold = p.low_stock_threshold ?? 5;
-              const isLow = stock <= threshold;
-              const isOut = stock === 0;
-              return (
-                <tr key={p.id} className="border-b border-gray-50">
-                  <td className="py-3 px-4 font-medium text-gray-900">{p.name}</td>
-                  <td className="py-3 px-4 text-right font-medium">{stock}</td>
-                  <td className="py-3 px-4 text-right text-gray-500">{threshold}</td>
-                  <td className="py-3 px-4 text-center">
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                      isOut ? "bg-red-50 text-red-700" : isLow ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"
-                    }`}>
-                      {isOut ? "Out" : isLow ? "Low" : "OK"}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-right">
-                    <div className="flex gap-2 justify-end">
-                      {(["restock", "adjustment", "spoilage"] as MovementReason[]).map((reason) => (
-                        <button
-                          key={reason}
-                          onClick={() => setModal({
-                            type: "product", id: p.id, name: p.name,
-                            currentStock: stock, newStock: "", reason, notes: "",
-                          })}
-                          className={`text-xs font-medium px-2 py-1 rounded ${
-                            reason === "restock" ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100" :
-                            reason === "spoilage" ? "bg-red-50 text-red-700 hover:bg-red-100" :
-                            "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                          }`}
-                        >
-                          {reason.charAt(0).toUpperCase() + reason.slice(1)}
-                        </button>
-                      ))}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
+            {filteredRetailProducts.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="py-10 text-center text-gray-400">
+                  {searchTerm ? `No retail items found matching "${searchTerm}"` : "No retail items found"}
+                </td>
+              </tr>
+            ) : (
+              filteredRetailProducts.map((p) => {
+                const stock = p.retail_stock?.stock ?? 0;
+                const threshold = p.low_stock_threshold ?? 5;
+                const isLow = stock <= threshold;
+                const isOut = stock === 0;
+                return (
+                  <tr key={p.id} className="border-b border-gray-50">
+                    <td className="py-3 px-4 font-medium text-gray-900">{p.name}</td>
+                    <td className="py-3 px-4 text-right font-medium">{stock}</td>
+                    <td className="py-3 px-4 text-right text-gray-500">{threshold}</td>
+                    <td className="py-3 px-4 text-center">
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                        isOut ? "bg-red-50 text-red-700" : isLow ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"
+                      }`}>
+                        {isOut ? "Out" : isLow ? "Low" : "OK"}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <div className="flex gap-2 justify-end">
+                        {(["restock", "adjustment", "spoilage"] as MovementReason[]).map((reason) => (
+                          <button
+                            key={reason}
+                            onClick={() => setModal({
+                              type: "product", id: p.id, name: p.name,
+                              currentStock: stock, newStock: "", reason, notes: "",
+                            })}
+                            className={`text-xs font-medium px-2 py-1 rounded ${
+                              reason === "restock" ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100" :
+                              reason === "spoilage" ? "bg-red-50 text-red-700 hover:bg-red-100" :
+                              "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                            }`}
+                          >
+                            {reason.charAt(0).toUpperCase() + reason.slice(1)}
+                          </button>
+                        ))}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
       </div>
 
       {/* Ingredients */}
-      <h2 className="text-lg font-semibold text-gray-900 mb-3">🧪 Ingredients</h2>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-lg font-semibold text-gray-900">🧪 Ingredients</h2>
+        <div className="flex items-center gap-4">
+          <input
+            type="text"
+            placeholder="Search ingredients..."
+            value={ingredientSearchTerm}
+            onChange={(e) => setIngredientSearchTerm(e.target.value)}
+            className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 w-64"
+          />
+          <span className="text-xs text-gray-500 uppercase tracking-wider">
+            {totalIngredients > 0 ? `${ingredientPage * PAGE_SIZE + 1}-${Math.min((ingredientPage + 1) * PAGE_SIZE, totalIngredients)} of ${totalIngredients}` : "No ingredients"}
+          </span>
+          <div className="flex gap-1">
+            <button 
+              onClick={() => setIngredientPage(p => Math.max(0, p - 1))}
+              disabled={ingredientPage === 0}
+              className="px-2 py-1 rounded bg-white border text-xs shadow-sm hover:bg-gray-50 disabled:opacity-40"
+            >
+              ← Prev
+            </button>
+            <button 
+              onClick={() => setIngredientPage(p => p + 1)}
+              disabled={(ingredientPage + 1) * PAGE_SIZE >= totalIngredients}
+              className="px-2 py-1 rounded bg-white border text-xs shadow-sm hover:bg-gray-50 disabled:opacity-40"
+            >
+              Next →
+            </button>
+          </div>
+        </div>
+      </div>
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
           <thead>
@@ -199,44 +329,52 @@ export default function StockPage() {
             </tr>
           </thead>
           <tbody>
-            {ingredients.map((i) => {
-              const isLow = i.stock <= i.low_stock_threshold;
-              return (
-                <tr key={i.id} className="border-b border-gray-50">
-                  <td className="py-3 px-4 font-medium text-gray-900">{i.name}</td>
-                  <td className="py-3 px-4 text-gray-500">{i.unit}</td>
-                  <td className="py-3 px-4 text-right font-medium">{Number(i.stock).toLocaleString()}</td>
-                  <td className="py-3 px-4 text-right text-gray-500">{Number(i.low_stock_threshold).toLocaleString()}</td>
-                  <td className="py-3 px-4 text-center">
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                      isLow ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700"
-                    }`}>
-                      {isLow ? "Low" : "OK"}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-right">
-                    <div className="flex gap-2 justify-end">
-                      {(["restock", "adjustment", "spoilage"] as MovementReason[]).map((reason) => (
-                        <button
-                          key={reason}
-                          onClick={() => setModal({
-                            type: "ingredient", id: i.id, name: i.name,
-                            currentStock: i.stock, newStock: "", reason, notes: "",
-                          })}
-                          className={`text-xs font-medium px-2 py-1 rounded ${
-                            reason === "restock" ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100" :
-                            reason === "spoilage" ? "bg-red-50 text-red-700 hover:bg-red-100" :
-                            "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                          }`}
-                        >
-                          {reason.charAt(0).toUpperCase() + reason.slice(1)}
-                        </button>
-                      ))}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
+            {filteredIngredients.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="py-10 text-center text-gray-400">
+                  {ingredientSearchTerm ? `No ingredients found matching "${ingredientSearchTerm}"` : "No ingredients found"}
+                </td>
+              </tr>
+            ) : (
+              filteredIngredients.map((i) => {
+                const isLow = i.stock <= i.low_stock_threshold;
+                return (
+                  <tr key={i.id} className="border-b border-gray-50">
+                    <td className="py-3 px-4 font-medium text-gray-900">{i.name}</td>
+                    <td className="py-3 px-4 text-gray-500">{i.unit}</td>
+                    <td className="py-3 px-4 text-right font-medium">{Number(i.stock).toLocaleString()}</td>
+                    <td className="py-3 px-4 text-right text-gray-500">{Number(i.low_stock_threshold).toLocaleString()}</td>
+                    <td className="py-3 px-4 text-center">
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                        isLow ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700"
+                      }`}>
+                        {isLow ? "Low" : "OK"}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <div className="flex gap-2 justify-end">
+                        {(["restock", "adjustment", "spoilage"] as MovementReason[]).map((reason) => (
+                          <button
+                            key={reason}
+                            onClick={() => setModal({
+                              type: "ingredient", id: i.id, name: i.name,
+                              currentStock: i.stock, newStock: "", reason, notes: "",
+                            })}
+                            className={`text-xs font-medium px-2 py-1 rounded ${
+                              reason === "restock" ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100" :
+                              reason === "spoilage" ? "bg-red-50 text-red-700 hover:bg-red-100" :
+                              "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                            }`}
+                          >
+                            {reason.charAt(0).toUpperCase() + reason.slice(1)}
+                          </button>
+                        ))}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
       </div>
@@ -246,6 +384,13 @@ export default function StockPage() {
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold text-gray-900">📜 Stock Audit History</h2>
           <div className="flex items-center gap-4">
+            <input
+              type="text"
+              placeholder="Search audit history..."
+              value={auditSearchTerm}
+              onChange={(e) => setAuditSearchTerm(e.target.value)}
+              className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 w-64"
+            />
             <span className="text-xs text-gray-500 uppercase tracking-wider">
               {totalMovements > 0 ? `${page * 20 + 1}-${Math.min((page + 1) * 20, totalMovements)} of ${totalMovements}` : "No movements"}
             </span>
@@ -281,53 +426,54 @@ export default function StockPage() {
                 </tr>
               </thead>
               <tbody>
-                {movements.map((move) => {
-                  const itemName = retailProducts.find(p => p.id === move.item_id)?.name 
-                            || ingredients.find(i => i.id === move.item_id)?.name
-                            || "Unknown Item";
-                  
-                  const delta = move.quantity_delta;
-
-                  return (
-                    <tr key={move.id} className="border-b border-gray-50 hover:bg-gray-25 transition-colors">
-                      <td className="py-3 px-4 text-xs text-gray-500" title={new Date(move.performed_at || move.created_at).toLocaleString()}>
-                        {timeAgo(move.performed_at || move.created_at)}
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className="font-medium text-gray-900">{itemName}</span>
-                        {move.item_type === "ingredient" && (
-                          <span className="ml-1.5 text-[10px] uppercase text-amber-600 bg-amber-50 px-1 rounded">Ingredient</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${
-                          move.movement_type === "restock" ? "bg-emerald-50 text-emerald-700" :
-                          move.movement_type === "spoilage" ? "bg-red-50 text-red-700" :
-                          "bg-gray-100 text-gray-600"
-                        }`}>
-                          {move.movement_type}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-right tabular-nums">
-                        <span className={`font-semibold ${delta > 0 ? "text-emerald-600" : delta < 0 ? "text-red-600" : "text-gray-500"}`}>
-                          {delta > 0 ? "+" : ""}{delta}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-xs text-gray-600">
-                        {move.performed_by ? (profileMap[move.performed_by] || "Admin") : "Admin"}
-                      </td>
-                      <td className="py-3 px-4 text-gray-500 truncate italic max-w-[200px]" title={move.notes || ""}>
-                        {move.notes || "—"}
-                      </td>
-                    </tr>
-                  );
-                })}
-                {movements.length === 0 && (
+                {filteredMovements.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="py-10 text-center text-gray-400">
-                      No recent stock movements found.
+                      {auditSearchTerm ? `No audit history found matching "${auditSearchTerm}"` : "No recent stock movements found."}
                     </td>
                   </tr>
+                ) : (
+                  filteredMovements.map((move) => {
+                    const itemName = retailProducts.find(p => p.id === move.item_id)?.name 
+                              || ingredients.find(i => i.id === move.item_id)?.name
+                              || "Unknown Item";
+                    
+                    const delta = move.quantity_delta;
+
+                    return (
+                      <tr key={move.id} className="border-b border-gray-50 hover:bg-gray-25 transition-colors">
+                        <td className="py-3 px-4 text-xs text-gray-500" title={new Date(move.performed_at || move.created_at).toLocaleString()}>
+                          {timeAgo(move.performed_at || move.created_at)}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="font-medium text-gray-900">{itemName}</span>
+                          {move.item_type === "ingredient" && (
+                            <span className="ml-1.5 text-[10px] uppercase text-amber-600 bg-amber-50 px-1 rounded">Ingredient</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                            move.movement_type === "restock" ? "bg-emerald-50 text-emerald-700" :
+                            move.movement_type === "spoilage" ? "bg-red-50 text-red-700" :
+                            "bg-gray-100 text-gray-600"
+                          }`}>
+                            {move.movement_type}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-right tabular-nums">
+                          <span className={`font-semibold ${delta > 0 ? "text-emerald-600" : delta < 0 ? "text-red-600" : "text-gray-500"}`}>
+                            {delta > 0 ? "+" : ""}{delta}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-xs text-gray-600">
+                          {move.performed_by ? (profileMap[move.performed_by] || "Admin") : "Admin"}
+                        </td>
+                        <td className="py-3 px-4 text-gray-500 truncate italic max-w-[200px]" title={move.notes || ""}>
+                          {move.notes || "—"}
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
