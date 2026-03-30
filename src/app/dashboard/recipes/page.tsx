@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/browser";
 import { adminSaveRecipes } from "@/lib/domain/orders";
 import { formatCurrency } from "@/lib/utils";
 import type { Product, Ingredient, RecipeWithIngredient } from "@/lib/types";
+import { ClipboardList } from "lucide-react";
 
 interface RecipeRow {
   ingredient_id: string;
@@ -278,7 +279,7 @@ export default function RecipesPage() {
             </div>
           ) : (
             <div className="card p-8 text-center text-gray-400">
-              <p className="text-3xl mb-2">📋</p>
+              <ClipboardList className="w-16 h-16 mx-auto mb-4 text-gray-300" />
               <p>Select a café product to edit its recipe</p>
             </div>
           )}

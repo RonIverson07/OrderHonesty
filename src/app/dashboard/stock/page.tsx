@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/browser";
 import { adjustStock } from "@/lib/domain/orders";
 import { timeAgo } from "@/lib/utils";
 import type { Product, Ingredient, RetailStock, InventoryMovement } from "@/lib/types";
+import { Package, FlaskConical, Scroll } from "lucide-react";
 
 type MovementReason = "restock" | "adjustment" | "spoilage";
 
@@ -190,7 +191,7 @@ export default function StockPage() {
 
       {/* Retail Products */}
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-lg font-semibold text-gray-900">🧊 Retail Items</h2>
+        <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2"><Package className="w-5 h-5 text-blue-600" /> Retail Items</h2>
         <div className="flex items-center gap-4">
           <input
             type="text"
@@ -286,7 +287,7 @@ export default function StockPage() {
 
       {/* Ingredients */}
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-lg font-semibold text-gray-900">🧪 Ingredients</h2>
+        <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2"><FlaskConical className="w-5 h-5 text-emerald-600" /> Ingredients</h2>
         <div className="flex items-center gap-4">
           <input
             type="text"
@@ -382,7 +383,7 @@ export default function StockPage() {
       {/* Stock History Logs */}
       <div className="mt-8">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold text-gray-900">📜 Stock Audit History</h2>
+          <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2"><Scroll className="w-5 h-5 text-amber-600" /> Stock Audit History</h2>
           <div className="flex items-center gap-4">
             <input
               type="text"

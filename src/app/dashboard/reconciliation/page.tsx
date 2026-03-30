@@ -6,7 +6,7 @@ import { confirmOrderPayment, markDayReconciled, updatePaymentProofStatus, saveI
 import { formatCurrency, timeAgo } from "@/lib/utils";
 import type { OrderWithItems, Product, RetailStock, Ingredient } from "@/lib/types";
 import Link from "next/link";
-import { Receipt } from "lucide-react";
+import { Receipt, DollarSign, Package, FlaskConical, AlertTriangle, CheckCircle2, Coffee, Thermometer, Smartphone, CreditCard } from "lucide-react";
 
 // ---- Demo Data ----
 
@@ -429,17 +429,17 @@ export default function ReconciliationPage() {
       <div className="flex gap-1 mb-6 bg-gray-100 rounded-lg p-1 w-fit">
         <button
           onClick={() => setActiveTab("payments")}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === "payments" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${activeTab === "payments" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
             }`}
         >
-          💰 Payments
+          <DollarSign className="w-4 h-4 text-emerald-600" />Payments
         </button>
         <button
           onClick={() => setActiveTab("inventory")}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === "inventory" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${activeTab === "inventory" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
             }`}
         >
-          📦 Retail Check
+          <Package className="w-4 h-4 text-blue-600" />Retail Check
           {inventoryMismatches.length > 0 && (
             <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-red-500 text-white text-xs">
               {inventoryMismatches.length}
@@ -448,10 +448,10 @@ export default function ReconciliationPage() {
         </button>
         <button
           onClick={() => setActiveTab("ingredients")}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === "ingredients" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${activeTab === "ingredients" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
             }`}
         >
-          🧪 Ingredients Audit
+          <FlaskConical className="w-4 h-4 text-emerald-600" />Ingredients Audit
           {ingredientMismatches.length > 0 && (
             <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-red-500 text-white text-xs">
               {ingredientMismatches.length}
@@ -496,7 +496,7 @@ export default function ReconciliationPage() {
               <div className="space-y-3">
                 <div>
                   <div className="flex justify-between text-sm mb-1">
-                    <span className="text-gray-600">☕ Café</span>
+                    <span className="text-gray-600 flex items-center gap-1.5"><Coffee className="w-4 h-4 text-amber-600" /> Café</span>
                     <span className="font-medium">{formatCurrency(cafeRevenue)}</span>
                   </div>
                   <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
@@ -505,7 +505,7 @@ export default function ReconciliationPage() {
                 </div>
                 <div>
                   <div className="flex justify-between text-sm mb-1">
-                    <span className="text-gray-600">🧊 Fridge</span>
+                    <span className="text-gray-600 flex items-center gap-1.5"><Thermometer className="w-4 h-4 text-blue-600" /> Fridge</span>
                     <span className="font-medium">{formatCurrency(fridgeRevenue)}</span>
                   </div>
                   <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
@@ -519,7 +519,7 @@ export default function ReconciliationPage() {
               <div className="space-y-3">
                 <div>
                   <div className="flex justify-between text-sm mb-1">
-                    <span className="text-gray-600">💵 Cash</span>
+                    <span className="text-gray-600 flex items-center gap-1.5"><CreditCard className="w-4 h-4 text-emerald-600" /> Cash</span>
                     <span className="font-medium">{formatCurrency(cashRevenue)}</span>
                   </div>
                   <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
@@ -528,7 +528,7 @@ export default function ReconciliationPage() {
                 </div>
                 <div>
                   <div className="flex justify-between text-sm mb-1">
-                    <span className="text-gray-600">📱 QR / Bank</span>
+                    <span className="text-gray-600 flex items-center gap-1.5"><Smartphone className="w-4 h-4 text-purple-600" /> QR / Bank</span>
                     <span className="font-medium">{formatCurrency(qrRevenue)}</span>
                   </div>
                   <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
@@ -603,7 +603,7 @@ export default function ReconciliationPage() {
                         </td>
                         <td className="py-3 px-4">
                           <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${order.source === "cafe" ? "bg-amber-50 text-amber-700" : "bg-blue-50 text-blue-700"}`}>
-                            {order.source === "cafe" ? "☕ Café" : "🧊 Fridge"}
+                            {order.source === "cafe" ? <><Coffee className="w-3 h-3 mr-1" /> Café</> : <><Thermometer className="w-3 h-3 mr-1" /> Fridge</>}
                           </span>
                         </td>
                         <td className="py-3 px-4 text-gray-600 capitalize">{order.payment_method.replace("_", " ")}</td>
@@ -693,7 +693,7 @@ export default function ReconciliationPage() {
 
           {/* Inventory Check Table */}
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">📋 Retail Inventory Count</h2>
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2"><Package className="w-5 h-5 text-blue-600" /> Retail Inventory Count</h2>
             <button
               onClick={handleSaveInventoryCheck}
               disabled={isPending || inventoryWithCount.length === 0 || inventorySaved}
@@ -764,14 +764,14 @@ export default function ReconciliationPage() {
                         {variance === null ? (
                           <span className="text-xs text-gray-300">—</span>
                         ) : variance === 0 ? (
-                          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">✓ Match</span>
+                          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Match</span>
                         ) : isSevere ? (
-                          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-red-50 text-red-700">
-                            ⚠ {variance < 0 ? "Missing" : "Excess"}
-                          </span>
+                            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-red-50 text-red-700 flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3" />{variance < 0 ? "Missing" : "Excess"}
+                            </span>
                         ) : (
-                          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">
-                            ~ {variance < 0 ? "Short" : "Over"}
+                          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3" />{variance < 0 ? "Short" : "Over"}
                           </span>
                         )}
                       </td>
@@ -788,8 +788,8 @@ export default function ReconciliationPage() {
           {/* Mismatch Summary (when items counted) */}
           {inventoryMismatches.length > 0 && (
             <div className="mt-4 card p-4 border-l-4 border-l-amber-400">
-              <h3 className="text-sm font-semibold text-gray-900 mb-2">
-                ⚠ {inventoryMismatches.length} item{inventoryMismatches.length > 1 ? "s" : ""} with discrepancy
+              <h3 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-500" />{inventoryMismatches.length} item{inventoryMismatches.length > 1 ? "s" : ""} with discrepancy
               </h3>
               <div className="space-y-1">
                 {inventoryMismatches.map((item) => {
@@ -847,7 +847,7 @@ export default function ReconciliationPage() {
 
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">🧪 Daily Ingredients Audit</h2>
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2"><FlaskConical className="w-5 h-5 text-emerald-600" /> Daily Ingredients Audit</h2>
               <p className="text-sm text-gray-500">Record physical counts for raw materials (beans, milk, syrups)</p>
             </div>
             <button
@@ -917,10 +917,10 @@ export default function ReconciliationPage() {
                         {variance === null ? (
                           <span className="text-xs text-gray-300">—</span>
                         ) : variance === 0 ? (
-                          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">✓ Match</span>
+                          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Match</span>
                         ) : (
-                          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">
-                            ⚠ {variance < 0 ? "Short" : "Over"}
+                          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3" />{variance < 0 ? "Short" : "Over"}
                           </span>
                         )}
                       </td>
