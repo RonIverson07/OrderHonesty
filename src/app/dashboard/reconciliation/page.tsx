@@ -585,6 +585,7 @@ export default function ReconciliationPage() {
                     <th className="text-left py-3 px-4 font-medium text-gray-500">Order</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-500">Source</th>
                     <th className="text-left py-3 px-4 font-medium text-gray-500">Method</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-500">Items</th>
                     <th className="text-right py-3 px-4 font-medium text-gray-500">Amount</th>
                     <th className="text-center py-3 px-4 font-medium text-gray-500">Confirmed</th>
                     <th className="text-center py-3 px-4 font-medium text-gray-500">Snap</th>
@@ -606,6 +607,11 @@ export default function ReconciliationPage() {
                           </span>
                         </td>
                         <td className="py-3 px-4 text-gray-600 capitalize">{order.payment_method.replace("_", " ")}</td>
+                        <td className="py-3 px-4 text-gray-600 max-w-[200px]">
+                          <div className="truncate">
+                            {order.order_items.map((i) => `${i.qty}× ${i.products?.name}`).join(", ")}
+                          </div>
+                        </td>
                         <td className="py-3 px-4 text-right font-medium">{formatCurrency(order.total_price)}</td>
                         <td className="py-3 px-4 text-center">
                           {order.payment_confirmed
@@ -643,7 +649,7 @@ export default function ReconciliationPage() {
                     );
                   })}
                   {orders.length === 0 && (
-                    <tr><td colSpan={7} className="py-8 text-center text-gray-400">No orders for this date</td></tr>
+                    <tr><td colSpan={8} className="py-8 text-center text-gray-400">No orders for this date</td></tr>
                   )}
                 </tbody>
               </table>
