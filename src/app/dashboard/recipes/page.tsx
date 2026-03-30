@@ -19,6 +19,8 @@ export default function RecipesPage() {
   const [existingRecipes, setExistingRecipes] = useState<RecipeWithIngredient[]>([]);
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState("");
+  const [productSearchInput, setProductSearchInput] = useState("");
+  const [productSearch, setProductSearch] = useState("");
 
   useEffect(() => {
     async function load() {
@@ -62,6 +64,17 @@ export default function RecipesPage() {
 
   const ingredientMap = new Map(ingredients.map((i) => [i.id, i]));
 
+  const normalizedSearch = productSearch.trim().toLowerCase();
+  const filteredCafeProducts = normalizedSearch
+    ? cafeProducts.filter((p) => p.name.toLowerCase().includes(normalizedSearch))
+    : cafeProducts;
+
+  const applySearch = () => setProductSearch(productSearchInput);
+  const clearSearch = () => {
+    setProductSearchInput("");
+    setProductSearch("");
+  };
+
   const totalCost = recipes.reduce((sum, r) => {
     const ing = ingredientMap.get(r.ingredient_id);
     return sum + (ing ? ing.unit_cost * r.qty_required : 0);
@@ -103,8 +116,39 @@ export default function RecipesPage() {
         {/* Product List */}
         <div className="card p-4">
           <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Café Products</h3>
+          <div className="mb-3 flex gap-2">
+            <div className="relative flex-1">
+              <input
+                type="text"
+                value={productSearchInput}
+                onChange={(e) => setProductSearchInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") applySearch();
+                }}
+                placeholder="Search products..."
+                className="w-full px-3 py-2 pr-8 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"
+              />
+              {productSearchInput.trim() && (
+                <button
+                  type="button"
+                  onClick={clearSearch}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg leading-none"
+                  aria-label="Clear search"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={applySearch}
+              className="btn-secondary text-sm whitespace-nowrap"
+            >
+              Search
+            </button>
+          </div>
           <div className="space-y-1">
-            {cafeProducts.map((p) => (
+            {filteredCafeProducts.map((p) => (
               <button
                 key={p.id}
                 onClick={() => selectProduct(p)}
@@ -118,7 +162,7 @@ export default function RecipesPage() {
                 <span className="text-xs text-gray-400 ml-2">{formatCurrency(p.selling_price)}</span>
               </button>
             ))}
-            {cafeProducts.length === 0 && (
+            {filteredCafeProducts.length === 0 && (
               <p className="text-sm text-gray-400 py-4 text-center">No café products added yet</p>
             )}
           </div>

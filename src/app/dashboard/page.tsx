@@ -306,7 +306,6 @@ export default function DashboardPage() {
                         <th className="text-left py-3 px-4 font-medium text-gray-500">Order</th>
                         <th className="text-left py-3 px-4 font-medium text-gray-500">Items</th>
                         <th className="text-left py-3 px-4 font-medium text-gray-500">Status</th>
-                        <th className="text-center py-3 px-4 font-medium text-gray-500">Proof</th>
                         <th className="text-right py-3 px-4 font-medium text-gray-500">Total</th>
                         <th className="text-center py-3 px-4 font-medium text-gray-500">Paid</th>
                         <th className="text-center py-3 px-4 font-medium text-gray-500">Snap</th>
@@ -346,11 +345,6 @@ export default function DashboardPage() {
                               )}
                             </td>
                             <td className="py-3 px-4"><OrderStatusBadge status={order.status} /></td>
-                            <td className="py-3 px-4 text-center">
-                              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${proofStyles[order.payment_proof_status] ?? proofStyles.none}`}>
-                                {proofLabels[order.payment_proof_status] ?? "—"}
-                              </span>
-                            </td>
                             <td className="py-3 px-4 text-right font-medium">{formatCurrency(order.total_price)}</td>
                             <td className="py-3 px-4 text-center">
                               {order.payment_confirmed ? (
@@ -377,7 +371,7 @@ export default function DashboardPage() {
                         );
                       })}
                       {orders.length === 0 && (
-                        <tr><td colSpan={7} className="py-8 text-center text-gray-400">No orders today</td></tr>
+                        <tr><td colSpan={6} className="py-8 text-center text-gray-400">No orders today</td></tr>
                       )}
                     </tbody>
                   </table>
