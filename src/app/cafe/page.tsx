@@ -25,6 +25,7 @@ export default function CafePage() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [proofPreview, setProofPreview] = useState<string | null>(null);
+  const proofInputRef = useRef<HTMLInputElement | null>(null);
   const [isPending, startTransition] = useTransition();
   const [status, setStatus] = useState<"idle" | "snapshot" | "submitting" | "success" | "error">("idle");
   const [successOrderNumber, setSuccessOrderNumber] = useState<string | null>(null);
@@ -107,6 +108,14 @@ export default function CafePage() {
     }
     load();
   }, []);
+
+  useEffect(() => {
+    if (paymentMethod === "cash" || paymentMethod === "gcash") {
+      setProofFile(null);
+      setProofPreview(null);
+      if (proofInputRef.current) proofInputRef.current.value = "";
+    }
+  }, [paymentMethod]);
 
   const setQty = (productId: string, qty: number) => {
     setQuantities((prev) => ({ ...prev, [productId]: qty }));
@@ -348,13 +357,14 @@ export default function CafePage() {
           )}
 
           {/* Payment Proof */}
-          {paymentMethod !== "cash" && (
+          {paymentMethod !== "cash" && paymentMethod !== "gcash" && (
             <div className="mb-4">
               <label className="text-xs font-medium text-gray-500 mb-2 block">Payment Proof (optional)</label>
               <input
                 type="file"
                 accept="image/*"
                 onChange={handleFileChange}
+                ref={proofInputRef}
                 className="block w-full text-[10px] text-gray-500 file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-gray-200 file:bg-gray-50 file:text-gray-700 file:text-xs file:font-medium hover:file:bg-gray-100 cursor-pointer"
               />
               {proofPreview && (

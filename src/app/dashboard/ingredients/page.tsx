@@ -129,7 +129,7 @@ export default function IngredientsPage() {
                   <tr key={i.id} className="border-b border-gray-50 hover:bg-gray-25">
                     <td className="py-3 px-4 font-medium text-gray-900">{i.name}</td>
                     <td className="py-3 px-4 text-gray-500">{i.unit}</td>
-                    <td className="py-3 px-4 text-right text-gray-500">₱{Number(i.unit_cost).toFixed(4)}</td>
+                    <td className="py-3 px-4 text-right text-gray-500">₱{Number(i.unit_cost).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 4 })}</td>
                     <td className="py-3 px-4 text-right font-medium">{Number(i.stock).toLocaleString()}</td>
                     <td className="py-3 px-4 text-right text-gray-500">{Number(i.low_stock_threshold).toLocaleString()}</td>
                     <td className="py-3 px-4 text-center">
