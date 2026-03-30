@@ -79,9 +79,21 @@ export default function IngredientsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Ingredients</h1>
           <p className="text-sm text-gray-500">Raw materials for café drinks</p>
         </div>
-        <button onClick={() => { setEditing(null); setShowForm(true); }} className="btn-primary text-sm">
-          + Add Ingredient
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="relative w-full max-w-xs">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search ingredients..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="input !pl-10 h-10 w-full bg-white border-gray-200 focus:border-amber-500 focus:ring-amber-500"
+            />
+          </div>
+          <button onClick={() => { setEditing(null); setShowForm(true); }} className="btn-primary text-sm h-10 px-4">
+            + Add Ingredient
+          </button>
+        </div>
       </div>
 
       {message && (
@@ -89,18 +101,6 @@ export default function IngredientsPage() {
           {message}
         </div>
       )}
-
-      {/* Search bar */}
-      <div className="mb-4 relative max-w-xs">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-        <input
-          type="text"
-          placeholder="Search ingredients..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition"
-        />
-      </div>
 
       <div className="card overflow-hidden">
         <table className="w-full text-sm">

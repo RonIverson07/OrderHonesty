@@ -587,6 +587,7 @@ export default function ReconciliationPage() {
                     <th className="text-left py-3 px-4 font-medium text-gray-500">Method</th>
                     <th className="text-right py-3 px-4 font-medium text-gray-500">Amount</th>
                     <th className="text-center py-3 px-4 font-medium text-gray-500">Confirmed</th>
+                    <th className="text-center py-3 px-4 font-medium text-gray-500">Snap</th>
                     <th className="text-right py-3 px-4 font-medium text-gray-500">Actions</th>
                   </tr>
                 </thead>
@@ -611,6 +612,17 @@ export default function ReconciliationPage() {
                             ? <span className="text-emerald-600 font-medium text-xs">✓ Yes</span>
                             : <span className="text-gray-400 text-xs">No</span>}
                         </td>
+                        <td className="py-3 px-4 text-center">
+                          {order.order_snapshot_url ? (
+                            <a href={order.order_snapshot_url} target="_blank" rel="noopener noreferrer" className="inline-block group">
+                              <div className="w-8 h-8 rounded overflow-hidden border border-gray-200 group-hover:ring-2 group-hover:ring-amber-300 transition-all mx-auto">
+                                <img src={order.order_snapshot_url} alt="" className="w-full h-full object-cover" />
+                              </div>
+                            </a>
+                          ) : (
+                            <span className="text-xs text-gray-300">—</span>
+                          )}
+                        </td>
                         <td className="py-3 px-4 text-right">
                           {!order.payment_confirmed && (
                             <div className="flex gap-1 justify-end">
@@ -631,7 +643,7 @@ export default function ReconciliationPage() {
                     );
                   })}
                   {orders.length === 0 && (
-                    <tr><td colSpan={6} className="py-8 text-center text-gray-400">No orders for this date</td></tr>
+                    <tr><td colSpan={7} className="py-8 text-center text-gray-400">No orders for this date</td></tr>
                   )}
                 </tbody>
               </table>
