@@ -2,6 +2,40 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import type { PaymentMethod, PaymentProvider, PaymentStatus, ProofStatus, OrderStatus } from "@/lib/types";
 
+// ---- Generate Sequential Order Number ----
+
+export async function generateSequentialOrderNumber(): Promise<string> {
+  const supabase = await createClient();
+  
+  try {
+    // Get the highest order number
+    const { data: lastOrder, error } = await supabase
+      .from("orders")
+      .select("order_number")
+      .not("order_number", "is", null)
+      .order("order_number", { ascending: false })
+      .limit(1)
+      .single();
+    
+    let nextNumber = 1;
+    
+    if (!error && lastOrder && lastOrder.order_number) {
+      // Extract numeric part from order number (handles formats like "ORD-001", "000001", etc.)
+      const numericPart = lastOrder.order_number.match(/\d+/);
+      if (numericPart) {
+        nextNumber = parseInt(numericPart[0]) + 1;
+      }
+    }
+    
+    // Format as 6-digit number with leading zeros
+    return nextNumber.toString().padStart(6, '0');
+    
+  } catch (err) {
+    console.warn("Failed to get last order number, starting from 1:", err);
+    return "000001";
+  }
+}
+
 // ---- Insert Order ----
 
 export async function insertOrder(params: {
@@ -25,9 +59,14 @@ export async function insertOrder(params: {
   risk_flag?: string | null;
 }) {
   const supabase = await createClient();
+  
+  // Generate sequential order number
+  const orderNumber = await generateSequentialOrderNumber();
+  
   const { data, error } = await supabase
     .from("orders")
     .insert({
+      order_number: orderNumber,
       source: params.source,
       status: params.status ?? "new",
       payment_method: params.payment_method,
