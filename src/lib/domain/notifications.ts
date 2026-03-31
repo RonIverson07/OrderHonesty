@@ -203,7 +203,7 @@ export async function sendNewOrderAlert(orderId: string, orderNumber: string, to
   return sendEmail(
     adminEmail,
     `New Café Order: ${orderNumber}${customerName ? ` from ${customerName}` : ''}`,
-    buildEmailLayout("New Order", `<h2 style="color: #111827; font-size: 20px; font-weight: 600; margin-top: 0; margin-bottom: 16px;">New Order Received: #${orderNumber}</h2><p style="margin:0 0 16px 0;">A new order has just successfully entered the system.</p>${nameHtml}${itemsHtml}${totalHtml}${actionButtonsHtml}${snapHtml}`),
+    buildEmailLayout("New Order", `<h2 style="color: #111827; font-size: 20px; font-weight: 600; margin-top: 0; margin-bottom: 16px;">New Order Received: #${orderNumber}</h2><p style="margin:0 0 16px 0;">A new order has just successfully entered the system.</p>${nameHtml}${itemsHtml}${totalHtml}${snapHtml}${actionButtonsHtml}`),
     "new_order"
   );
 }
