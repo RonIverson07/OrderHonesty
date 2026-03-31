@@ -17,6 +17,7 @@ export default function StockPage() {
   const [ingredientSearchTerm, setIngredientSearchTerm] = useState("");
   const [filteredIngredients, setFilteredIngredients] = useState<Ingredient[]>([]);
   const [auditSearchTerm, setAuditSearchTerm] = useState("");
+  const [auditTypeFilter, setAuditTypeFilter] = useState("all");
   const [filteredMovements, setFilteredMovements] = useState<InventoryMovement[]>([]);
 
   const [retailProductPage, setRetailProductPage] = useState(0);
@@ -66,13 +67,17 @@ export default function StockPage() {
       const performedBy = profileMap[movement.performed_by || ""] || "";
       const notes = movement.notes || "";
       
-      return itemName.toLowerCase().includes(auditSearchTerm.toLowerCase()) ||
+      const matchesSearch = itemName.toLowerCase().includes(auditSearchTerm.toLowerCase()) ||
              performedBy.toLowerCase().includes(auditSearchTerm.toLowerCase()) ||
              notes.toLowerCase().includes(auditSearchTerm.toLowerCase()) ||
              movement.movement_type.toLowerCase().includes(auditSearchTerm.toLowerCase());
+             
+      const matchesType = auditTypeFilter === "all" || movement.movement_type.toLowerCase() === auditTypeFilter.toLowerCase();
+      
+      return matchesSearch && matchesType;
     });
     setFilteredMovements(filtered);
-  }, [movements, auditSearchTerm, retailProducts, ingredients, profileMap]);
+  }, [movements, auditSearchTerm, auditTypeFilter, retailProducts, ingredients, profileMap]);
 
   async function load() {
     try {
@@ -115,7 +120,7 @@ export default function StockPage() {
   async function loadMovements() {
     try {
       const supabase = createClient();
-      const PAGE_SIZE = 20;
+      const PAGE_SIZE = 10;
 
       // Fetch profiles for email lookup (client-side join — no FK needed)
       const { data: profileList } = await supabase
@@ -385,6 +390,17 @@ export default function StockPage() {
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2"><Scroll className="w-5 h-5 text-amber-600" /> Stock Audit History</h2>
           <div className="flex items-center gap-4">
+            <select
+              value={auditTypeFilter}
+              onChange={(e) => setAuditTypeFilter(e.target.value)}
+              className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+            >
+              <option value="all">All Types</option>
+              <option value="sale">Sale</option>
+              <option value="restock">Restock</option>
+              <option value="adjustment">Adjustment</option>
+              <option value="spoilage">Spoilage</option>
+            </select>
             <input
               type="text"
               placeholder="Search audit history..."
@@ -393,7 +409,7 @@ export default function StockPage() {
               className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 w-64"
             />
             <span className="text-xs text-gray-500 uppercase tracking-wider">
-              {totalMovements > 0 ? `${page * 20 + 1}-${Math.min((page + 1) * 20, totalMovements)} of ${totalMovements}` : "No movements"}
+              {totalMovements > 0 ? `${page * 10 + 1}-${Math.min((page + 1) * 10, totalMovements)} of ${totalMovements}` : "No movements"}
             </span>
             <div className="flex gap-1">
               <button 
@@ -405,7 +421,7 @@ export default function StockPage() {
               </button>
               <button 
                 onClick={() => setPage(p => p + 1)}
-                disabled={(page + 1) * 20 >= totalMovements}
+                disabled={(page + 1) * 10 >= totalMovements}
                 className="px-2 py-1 rounded bg-white border text-xs shadow-sm hover:bg-gray-50 disabled:opacity-40"
               >
                 Next →
