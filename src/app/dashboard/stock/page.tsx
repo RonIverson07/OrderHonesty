@@ -20,6 +20,9 @@ export default function StockPage() {
   const [auditTypeFilter, setAuditTypeFilter] = useState("all");
   const [filteredMovements, setFilteredMovements] = useState<InventoryMovement[]>([]);
 
+  const [retailFilterStatus, setRetailFilterStatus] = useState("all");
+  const [ingredientFilterStatus, setIngredientFilterStatus] = useState("all");
+
   const [retailProductPage, setRetailProductPage] = useState(0);
   const [totalRetailProducts, setTotalRetailProducts] = useState(0);
   const [ingredientPage, setIngredientPage] = useState(0);
@@ -48,17 +51,29 @@ export default function StockPage() {
   useEffect(() => { load(); }, [retailProductPage]);
   useEffect(() => { load(); }, [ingredientPage]);
   useEffect(() => {
-    const filtered = retailProducts.filter(product =>
-      product.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filtered = retailProducts.filter(product => {
+      const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const stock = product.retail_stock?.stock ?? 0;
+      const threshold = product.low_stock_threshold ?? 5;
+      const isOut = stock === 0;
+      const isLow = stock > 0 && stock <= threshold;
+      const status = isOut ? "out" : isLow ? "low" : "ok";
+      const matchesStatus = retailFilterStatus === "all" || status === retailFilterStatus;
+      return matchesSearch && matchesStatus;
+    });
     setFilteredRetailProducts(filtered);
-  }, [retailProducts, searchTerm]);
+  }, [retailProducts, searchTerm, retailFilterStatus]);
   useEffect(() => {
-    const filtered = ingredients.filter(ingredient =>
-      ingredient.name.toLowerCase().includes(ingredientSearchTerm.toLowerCase())
-    );
+    const filtered = ingredients.filter(ingredient => {
+      const matchesSearch = ingredient.name.toLowerCase().includes(ingredientSearchTerm.toLowerCase());
+      const isOut = ingredient.stock === 0;
+      const isLow = ingredient.stock > 0 && ingredient.stock <= ingredient.low_stock_threshold;
+      const status = isOut ? "out" : isLow ? "low" : "ok";
+      const matchesStatus = ingredientFilterStatus === "all" || status === ingredientFilterStatus;
+      return matchesSearch && matchesStatus;
+    });
     setFilteredIngredients(filtered);
-  }, [ingredients, ingredientSearchTerm]);
+  }, [ingredients, ingredientSearchTerm, ingredientFilterStatus]);
   useEffect(() => {
     const filtered = movements.filter(movement => {
       const itemName = retailProducts.find(p => p.id === movement.item_id)?.name 
@@ -198,6 +213,16 @@ export default function StockPage() {
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2"><Package className="w-5 h-5 text-blue-600" /> Retail Items</h2>
         <div className="flex items-center gap-4">
+          <select
+            value={retailFilterStatus}
+            onChange={(e) => setRetailFilterStatus(e.target.value)}
+            className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+          >
+            <option value="all">All Status</option>
+            <option value="low">Low Stock</option>
+            <option value="out">Out of Stock</option>
+            <option value="ok">OK Stock</option>
+          </select>
           <input
             type="text"
             placeholder="Search retail items..."
@@ -248,8 +273,8 @@ export default function StockPage() {
               filteredRetailProducts.map((p) => {
                 const stock = p.retail_stock?.stock ?? 0;
                 const threshold = p.low_stock_threshold ?? 5;
-                const isLow = stock <= threshold;
                 const isOut = stock === 0;
+                const isLow = stock > 0 && stock <= threshold;
                 return (
                   <tr key={p.id} className="border-b border-gray-50">
                     <td className="py-3 px-4 font-medium text-gray-900">{p.name}</td>
@@ -294,6 +319,16 @@ export default function StockPage() {
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2"><FlaskConical className="w-5 h-5 text-emerald-600" /> Ingredients</h2>
         <div className="flex items-center gap-4">
+          <select
+            value={ingredientFilterStatus}
+            onChange={(e) => setIngredientFilterStatus(e.target.value)}
+            className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+          >
+            <option value="all">All Status</option>
+            <option value="low">Low Stock</option>
+            <option value="out">Out of Stock</option>
+            <option value="ok">OK Stock</option>
+          </select>
           <input
             type="text"
             placeholder="Search ingredients..."
@@ -343,7 +378,8 @@ export default function StockPage() {
               </tr>
             ) : (
               filteredIngredients.map((i) => {
-                const isLow = i.stock <= i.low_stock_threshold;
+                const isOut = i.stock === 0;
+                const isLow = i.stock > 0 && i.stock <= i.low_stock_threshold;
                 return (
                   <tr key={i.id} className="border-b border-gray-50">
                     <td className="py-3 px-4 font-medium text-gray-900">{i.name}</td>
@@ -352,9 +388,9 @@ export default function StockPage() {
                     <td className="py-3 px-4 text-right text-gray-500">{Number(i.low_stock_threshold).toLocaleString()}</td>
                     <td className="py-3 px-4 text-center">
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                        isLow ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700"
+                        isOut ? "bg-red-50 text-red-700" : isLow ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"
                       }`}>
-                        {isLow ? "Low" : "OK"}
+                        {isOut ? "Out" : isLow ? "Low" : "OK"}
                       </span>
                     </td>
                     <td className="py-3 px-4 text-right">
