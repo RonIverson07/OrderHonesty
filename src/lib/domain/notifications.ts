@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getSetting } from "@/lib/domain/settings";
+import crypto from "crypto";
 
 type NotificationType = "new_order" | "low_stock" | "reconciliation_reminder" | "test";
 
@@ -76,10 +77,12 @@ async function sendEmail(to: string, subject: string, htmlHtml: string, type: No
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "Lebrew System <onboarding@resend.dev>", // Uses Resend's default onboarding email so you don't have to buy a domain name!
+        from: "Lebrew System <noreply@cafe.moonshotdigital.com.ph>",
         to,
         subject,
         html: htmlHtml,
+        clickTracking: false,
+        openTracking: false,
       }),
     });
 
@@ -120,6 +123,32 @@ function buildEmailLayout(title: string, contentHtml: string): string {
 </html>`;
 }
 
+function base64UrlEncode(input: string): string {
+  return Buffer.from(input).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function signEmailActionToken(payload: { orderId: string; action: "confirm" | "flag"; exp: number }): string {
+  const secret = process.env.EMAIL_ACTION_SECRET;
+  if (!secret) {
+    throw new Error("Missing EMAIL_ACTION_SECRET configuration");
+  }
+
+  const body = base64UrlEncode(JSON.stringify(payload));
+  const sig = crypto.createHmac("sha256", secret).update(body).digest("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  return `${body}.${sig}`;
+}
+
+function buildOrderActionUrl(orderId: string, action: "confirm" | "flag"): string {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (!appUrl) {
+    throw new Error("Missing NEXT_PUBLIC_APP_URL configuration");
+  }
+
+  const exp = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7;
+  const token = signEmailActionToken({ orderId, action, exp });
+  return `${appUrl.replace(/\/+$/g, "")}/api/email/order-action/${action}?token=${encodeURIComponent(token)}`;
+}
+
 // ==== Public Dispatchers ====
 
 export async function sendTestNotification(toEmail?: string) {
@@ -135,7 +164,7 @@ export async function sendTestNotification(toEmail?: string) {
   );
 }
 
-export async function sendNewOrderAlert(orderNumber: string, total: number, customerName?: string | null, snapshotUrl?: string | null, itemsList?: string | null) {
+export async function sendNewOrderAlert(orderId: string, orderNumber: string, total: number, customerName?: string | null, snapshotUrl?: string | null, itemsList?: string | null) {
   const adminEmail = await getSetting("admin_email", "");
   if (!adminEmail) return { success: false, reason: "no_email" };
 
@@ -147,10 +176,34 @@ export async function sendNewOrderAlert(orderNumber: string, total: number, cust
   const totalHtml = `<div style="${labelStyle}"><strong style="${strongStyle}">Order Total</strong> ₱${total.toFixed(2)}</div>`;
   const snapHtml = snapshotUrl ? `<div style="margin-top: 24px; text-align: center; background-color: #f9fafb; padding: 16px; border-radius: 8px; border: 1px solid #f3f4f6;"><strong style="${strongStyle}">Customer Snapshot</strong><br/><img src="${snapshotUrl}" alt="Customer Snapshot" style="max-width: 100%; width: 400px; height: auto; border-radius: 8px; margin-top: 8px;" /></div>` : "";
 
+  let actionButtonsHtml = "";
+  try {
+    const confirmUrl = buildOrderActionUrl(orderId, "confirm");
+    const flagUrl = buildOrderActionUrl(orderId, "flag");
+
+    actionButtonsHtml = `
+      <div style="margin-top: 20px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse: separate;">
+          <tr>
+            <td style="padding-right: 10px;">
+              <a href="${confirmUrl}" style="display: inline-block; background-color: #10b981; color: #ffffff; text-decoration: none; padding: 10px 14px; border-radius: 8px; font-weight: 600; font-size: 14px;">✓ Confirm</a>
+            </td>
+            <td>
+              <a href="${flagUrl}" style="display: inline-block; background-color: #ef4444; color: #ffffff; text-decoration: none; padding: 10px 14px; border-radius: 8px; font-weight: 600; font-size: 14px;">⚠ Flag</a>
+            </td>
+          </tr>
+        </table>
+        <p style="margin: 10px 0 0 0; font-size: 13px; color: #6b7280;">These buttons update your Reconciliation status inside Lebrew.</p>
+      </div>
+    `;
+  } catch (e) {
+    actionButtonsHtml = "";
+  }
+
   return sendEmail(
     adminEmail,
     `New Café Order: ${orderNumber}${customerName ? ` from ${customerName}` : ''}`,
-    buildEmailLayout("New Order", `<h2 style="color: #111827; font-size: 20px; font-weight: 600; margin-top: 0; margin-bottom: 16px;">New Order Received: #${orderNumber}</h2><p style="margin:0 0 16px 0;">A new order has just successfully entered the system.</p>${nameHtml}${itemsHtml}${totalHtml}${snapHtml}`),
+    buildEmailLayout("New Order", `<h2 style="color: #111827; font-size: 20px; font-weight: 600; margin-top: 0; margin-bottom: 16px;">New Order Received: #${orderNumber}</h2><p style="margin:0 0 16px 0;">A new order has just successfully entered the system.</p>${nameHtml}${itemsHtml}${totalHtml}${actionButtonsHtml}${snapHtml}`),
     "new_order"
   );
 }

@@ -402,7 +402,9 @@ export default function CafePage() {
             <div className="text-3xl font-bold text-emerald-600 mb-1">{successOrderNumber}</div>
           )}
           <p className="text-sm text-emerald-600/70">Head to the counter — your drink will be ready soon! ☕</p>
-          <button onClick={() => setStatus("idle")} className="mt-3 text-sm text-emerald-600 underline">New Order</button>
+          <button onClick={() => setStatus("idle")} className="mt-6 w-full sm:w-auto inline-flex justify-center items-center px-8 py-3.5 bg-emerald-600 text-white rounded-xl font-semibold shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 active:scale-95 transition-all text-base">
+            Start New Order
+          </button>
         </div>
       )}
 
