@@ -6,7 +6,7 @@ import { confirmOrderPayment, markDayReconciled, updatePaymentProofStatus, saveI
 import { formatCurrency, timeAgo } from "@/lib/utils";
 import type { OrderWithItems, Product, RetailStock, Ingredient } from "@/lib/types";
 import Link from "next/link";
-import { Receipt, DollarSign, Package, FlaskConical, AlertTriangle, CheckCircle2, Coffee, Thermometer, Smartphone, CreditCard } from "lucide-react";
+import { Receipt, DollarSign, Package, FlaskConical, AlertTriangle, CheckCircle2, Coffee, Thermometer, Smartphone, CreditCard, ChevronLeft, ChevronRight } from "lucide-react";
 
 // ---- Demo Data ----
 
@@ -102,7 +102,15 @@ export default function ReconciliationPage() {
   const [showOverrideModal, setShowOverrideModal] = useState(false);
   const [overrideReason, setOverrideReason] = useState("");
 
+  const [orderPage, setOrderPage] = useState(0);
+  const [inventoryPage, setInventoryPage] = useState(0);
+  const [ingredientPage, setIngredientPage] = useState(0);
+  const PAGE_SIZE = 10;
+
   useEffect(() => {
+    setOrderPage(0);
+    setInventoryPage(0);
+    setIngredientPage(0);
     loadOrders();
     loadInventory();
   }, [selectedDate]);
@@ -593,7 +601,7 @@ export default function ReconciliationPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {orders.map((order) => {
+                  {orders.slice(orderPage * PAGE_SIZE, (orderPage + 1) * PAGE_SIZE).map((order) => {
                     const ps = PROOF_STATUS_STYLES[order.payment_proof_status] ?? PROOF_STATUS_STYLES.none;
                     return (
                       <tr key={order.id} className="border-b border-gray-50 hover:bg-gray-25">
@@ -654,6 +662,33 @@ export default function ReconciliationPage() {
                 </tbody>
               </table>
             </div>
+            
+            {orders.length > 0 && (
+              <div className="flex items-center justify-between p-4 border-t border-gray-100 bg-white">
+                <span className="text-xs text-gray-500">
+                  Showing {orderPage * PAGE_SIZE + 1}–{Math.min((orderPage + 1) * PAGE_SIZE, orders.length)} of {orders.length} orders
+                </span>
+                <div className="flex items-center gap-2 text-sm">
+                  <button
+                    onClick={() => setOrderPage((p) => Math.max(0, p - 1))}
+                    disabled={orderPage === 0}
+                    className="text-gray-500 hover:text-gray-900 disabled:opacity-30 disabled:hover:text-gray-500 flex items-center gap-1 transition-colors"
+                  >
+                    <ChevronLeft className="w-4 h-4" /> Previous
+                  </button>
+                  <span className="text-gray-400 px-2">
+                    {orderPage + 1} / {Math.max(1, Math.ceil(orders.length / PAGE_SIZE))}
+                  </span>
+                  <button
+                    onClick={() => setOrderPage((p) => p + 1)}
+                    disabled={(orderPage + 1) * PAGE_SIZE >= orders.length}
+                    className="text-gray-500 hover:text-gray-900 disabled:opacity-30 disabled:hover:text-gray-500 flex items-center gap-1 transition-colors"
+                  >
+                    Next <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </>
       )}
@@ -715,7 +750,7 @@ export default function ReconciliationPage() {
                 </tr>
               </thead>
               <tbody>
-                {inventoryItems.map((item) => {
+                {inventoryItems.slice(inventoryPage * PAGE_SIZE, (inventoryPage + 1) * PAGE_SIZE).map((item) => {
                   const actual = item.actualCount !== "" ? parseFloat(item.actualCount) : null;
                   const variance = actual !== null && !isNaN(actual) ? actual - item.systemStock : null;
                   const isMismatch = variance !== null && variance !== 0;
@@ -783,6 +818,33 @@ export default function ReconciliationPage() {
                 )}
               </tbody>
             </table>
+            
+            {inventoryItems.length > 0 && (
+              <div className="flex items-center justify-between p-4 border-t border-gray-100 bg-white">
+                <span className="text-xs text-gray-500">
+                  Showing {inventoryPage * PAGE_SIZE + 1}–{Math.min((inventoryPage + 1) * PAGE_SIZE, inventoryItems.length)} of {inventoryItems.length} items
+                </span>
+                <div className="flex items-center gap-2 text-sm">
+                  <button
+                    onClick={() => setInventoryPage((p) => Math.max(0, p - 1))}
+                    disabled={inventoryPage === 0}
+                    className="text-gray-500 hover:text-gray-900 disabled:opacity-30 disabled:hover:text-gray-500 flex items-center gap-1 transition-colors"
+                  >
+                    <ChevronLeft className="w-4 h-4" /> Previous
+                  </button>
+                  <span className="text-gray-400 px-2">
+                    {inventoryPage + 1} / {Math.max(1, Math.ceil(inventoryItems.length / PAGE_SIZE))}
+                  </span>
+                  <button
+                    onClick={() => setInventoryPage((p) => p + 1)}
+                    disabled={(inventoryPage + 1) * PAGE_SIZE >= inventoryItems.length}
+                    className="text-gray-500 hover:text-gray-900 disabled:opacity-30 disabled:hover:text-gray-500 flex items-center gap-1 transition-colors"
+                  >
+                    Next <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Mismatch Summary (when items counted) */}
@@ -871,7 +933,7 @@ export default function ReconciliationPage() {
                 </tr>
               </thead>
               <tbody>
-                {ingredientItems.map((item) => {
+                {ingredientItems.slice(ingredientPage * PAGE_SIZE, (ingredientPage + 1) * PAGE_SIZE).map((item) => {
                   const actual = item.actualCount !== "" ? parseFloat(item.actualCount) : null;
                   const variance = actual !== null && !isNaN(actual) ? parseFloat((actual - item.systemStock).toFixed(2)) : null;
                   const isMismatch = variance !== null && variance !== 0;
@@ -932,6 +994,33 @@ export default function ReconciliationPage() {
                 )}
               </tbody>
             </table>
+            
+            {ingredientItems.length > 0 && (
+              <div className="flex items-center justify-between p-4 border-t border-gray-100 bg-white">
+                <span className="text-xs text-gray-500">
+                  Showing {ingredientPage * PAGE_SIZE + 1}–{Math.min((ingredientPage + 1) * PAGE_SIZE, ingredientItems.length)} of {ingredientItems.length} ingredients
+                </span>
+                <div className="flex items-center gap-2 text-sm">
+                  <button
+                    onClick={() => setIngredientPage((p) => Math.max(0, p - 1))}
+                    disabled={ingredientPage === 0}
+                    className="text-gray-500 hover:text-gray-900 disabled:opacity-30 disabled:hover:text-gray-500 flex items-center gap-1 transition-colors"
+                  >
+                    <ChevronLeft className="w-4 h-4" /> Previous
+                  </button>
+                  <span className="text-gray-400 px-2">
+                    {ingredientPage + 1} / {Math.max(1, Math.ceil(ingredientItems.length / PAGE_SIZE))}
+                  </span>
+                  <button
+                    onClick={() => setIngredientPage((p) => p + 1)}
+                    disabled={(ingredientPage + 1) * PAGE_SIZE >= ingredientItems.length}
+                    className="text-gray-500 hover:text-gray-900 disabled:opacity-30 disabled:hover:text-gray-500 flex items-center gap-1 transition-colors"
+                  >
+                    Next <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </>
       )}

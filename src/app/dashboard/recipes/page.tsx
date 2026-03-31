@@ -20,7 +20,6 @@ export default function RecipesPage() {
   const [existingRecipes, setExistingRecipes] = useState<RecipeWithIngredient[]>([]);
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState("");
-  const [productSearchInput, setProductSearchInput] = useState("");
   const [productSearch, setProductSearch] = useState("");
 
   useEffect(() => {
@@ -70,9 +69,7 @@ export default function RecipesPage() {
     ? cafeProducts.filter((p) => p.name.toLowerCase().includes(normalizedSearch))
     : cafeProducts;
 
-  const applySearch = () => setProductSearch(productSearchInput);
   const clearSearch = () => {
-    setProductSearchInput("");
     setProductSearch("");
   };
 
@@ -121,15 +118,12 @@ export default function RecipesPage() {
             <div className="relative flex-1">
               <input
                 type="text"
-                value={productSearchInput}
-                onChange={(e) => setProductSearchInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") applySearch();
-                }}
+                value={productSearch}
+                onChange={(e) => setProductSearch(e.target.value)}
                 placeholder="Search products..."
                 className="w-full px-3 py-2 pr-8 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"
               />
-              {productSearchInput.trim() && (
+              {productSearch.trim() && (
                 <button
                   type="button"
                   onClick={clearSearch}
@@ -140,13 +134,6 @@ export default function RecipesPage() {
                 </button>
               )}
             </div>
-            <button
-              type="button"
-              onClick={applySearch}
-              className="btn-secondary text-sm whitespace-nowrap"
-            >
-              Search
-            </button>
           </div>
           <div className="space-y-1">
             {filteredCafeProducts.map((p) => (
