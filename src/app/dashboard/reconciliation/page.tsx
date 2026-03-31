@@ -6,7 +6,11 @@ import { confirmOrderPayment, markDayReconciled, updatePaymentProofStatus, saveI
 import { formatCurrency, timeAgo } from "@/lib/utils";
 import type { OrderWithItems, Product, RetailStock, Ingredient } from "@/lib/types";
 import Link from "next/link";
-import { Receipt, DollarSign, Package, FlaskConical, AlertTriangle, CheckCircle2, Coffee, Thermometer, Smartphone, CreditCard, ChevronLeft, ChevronRight } from "lucide-react";
+import { Receipt, DollarSign, Package, FlaskConical, AlertTriangle, CheckCircle2, Coffee, Thermometer, Smartphone, CreditCard, ChevronLeft, ChevronRight, BarChart2 } from "lucide-react";
+import {
+  ResponsiveContainer, LineChart, Line, BarChart, Bar,
+  XAxis, YAxis, Tooltip, CartesianGrid, Legend
+} from "recharts";
 
 // ---- Demo Data ----
 
@@ -80,7 +84,7 @@ const PROOF_STATUS_STYLES: Record<string, { bg: string; text: string; label: str
 };
 
 // ---- Tabs ----
-type ReconciliationTab = "payments" | "inventory" | "ingredients";
+type ReconciliationTab = "payments" | "inventory" | "ingredients" | "analytics";
 
 export default function ReconciliationPage() {
   const [activeTab, setActiveTab] = useState<ReconciliationTab>("payments");
@@ -102,6 +106,9 @@ export default function ReconciliationPage() {
   const [showOverrideModal, setShowOverrideModal] = useState(false);
   const [overrideReason, setOverrideReason] = useState("");
 
+  // Weekly orders for analytics charts
+  const [weeklyOrders, setWeeklyOrders] = useState<OrderWithItems[]>([]);
+
   const [orderPage, setOrderPage] = useState(0);
   const [inventoryPage, setInventoryPage] = useState(0);
   const [ingredientPage, setIngredientPage] = useState(0);
@@ -113,6 +120,7 @@ export default function ReconciliationPage() {
     setIngredientPage(0);
     loadOrders();
     loadInventory();
+    loadWeeklyOrders();
   }, [selectedDate]);
 
   async function loadOrders() {
@@ -138,6 +146,30 @@ export default function ReconciliationPage() {
       setIsDemo(false);
     } catch (err) {
       console.error("Critical reconciliation load error:", err);
+    }
+  }
+
+  async function loadWeeklyOrders() {
+    try {
+      const supabase = createClient();
+      const anchor = new Date(selectedDate);
+      const sevenDaysAgo = new Date(anchor);
+      sevenDaysAgo.setDate(anchor.getDate() - 6);
+      sevenDaysAgo.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(anchor);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      const { data } = await supabase
+        .from("orders")
+        .select("*, order_items(*, products!product_id(*))")
+        .gte("created_at", sevenDaysAgo.toISOString())
+        .lte("created_at", endOfDay.toISOString())
+        .eq("status", "completed")
+        .order("created_at", { ascending: true });
+
+      setWeeklyOrders((data ?? []) as OrderWithItems[]);
+    } catch (err) {
+      console.error("Weekly orders load error:", err);
     }
   }
 
@@ -415,7 +447,7 @@ export default function ReconciliationPage() {
           )}
         </div>
         <div className="flex items-center gap-3">
-          <Link href="/dashboard/reconciliation/history" className="btn-secondary text-sm">
+          <Link href="/dashboard/reconciliation/history" className="btn-secondary text-sm whitespace-nowrap">
             History &amp; Trends
           </Link>
           <input
@@ -465,6 +497,13 @@ export default function ReconciliationPage() {
               {ingredientMismatches.length}
             </span>
           )}
+        </button>
+        <button
+          onClick={() => setActiveTab("analytics")}
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${activeTab === "analytics" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+            }`}
+        >
+          <BarChart2 className="w-4 h-4 text-violet-600" />Analytics
         </button>
       </div>
 
@@ -1024,6 +1063,117 @@ export default function ReconciliationPage() {
           </div>
         </>
       )}
+      {/* ===== ANALYTICS TAB ===== */}
+      {activeTab === "analytics" && (() => {
+        // 7-day revenue trend anchored to selectedDate
+        const revenueByDay: Record<string, { date: string; cafe: number; fridge: number }> = {};
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date(selectedDate);
+          d.setDate(d.getDate() - i);
+          const key = d.toLocaleDateString("en-PH", { month: "short", day: "numeric" });
+          revenueByDay[key] = { date: key, cafe: 0, fridge: 0 };
+        }
+        weeklyOrders.forEach((o) => {
+          const key = new Date(o.created_at).toLocaleDateString("en-PH", { month: "short", day: "numeric" });
+          if (revenueByDay[key]) {
+            if (o.source === "cafe") revenueByDay[key].cafe += Number(o.total_price);
+            else revenueByDay[key].fridge += Number(o.total_price);
+          }
+        });
+        const revenueTrendData = Object.values(revenueByDay);
+
+        // Top 5 products for the selected date
+        const productSales: Record<string, { name: string; qty: number }> = {};
+        orders.forEach((o) =>
+          o.order_items.forEach((item) => {
+            const name = item.products?.name ?? "Unknown";
+            if (!productSales[name]) productSales[name] = { name, qty: 0 };
+            productSales[name].qty += item.qty;
+          })
+        );
+        const topProductsData = Object.values(productSales)
+          .sort((a, b) => b.qty - a.qty)
+          .slice(0, 5);
+
+        // Peak hours for the selected date
+        const hourTotals: Record<number, number> = {};
+        orders.forEach((o) => {
+          const h = new Date(o.created_at).getHours();
+          hourTotals[h] = (hourTotals[h] ?? 0) + 1;
+        });
+        const peakHoursData = Array.from({ length: 17 }, (_, i) => {
+          const h = i + 6; // 6am–10pm
+          return {
+            hour: h < 12 ? `${h === 0 ? 12 : h}am` : `${h === 12 ? 12 : h - 12}pm`,
+            orders: hourTotals[h] ?? 0,
+          };
+        });
+
+        return (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {/* 7-Day Revenue Trend */}
+              <div className="card p-4 lg:col-span-2">
+                <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
+                  7-Day Revenue Trend
+                </h3>
+                <ResponsiveContainer width="100%" height={200}>
+                  <LineChart data={revenueTrendData} margin={{ top: 4, right: 8, left: -10, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#9ca3af" }} />
+                    <YAxis tick={{ fontSize: 11, fill: "#9ca3af" }} tickFormatter={(v) => `₱${v}`} />
+                    <Tooltip formatter={(v: unknown) => [`₱${Number(v).toFixed(2)}`, ""]} />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    <Line type="monotone" dataKey="cafe" name="Café" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                    <Line type="monotone" dataKey="fridge" name="Fridge" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Top Products */}
+              <div className="card p-4">
+                <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
+                  Top Products ({new Date(selectedDate).toLocaleDateString("en-PH", { month: "short", day: "numeric" })})
+                </h3>
+                {topProductsData.length === 0 ? (
+                  <div className="flex items-center justify-center h-[200px] text-gray-400 text-sm">No orders for this date</div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={topProductsData} layout="vertical" margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
+                      <XAxis type="number" tick={{ fontSize: 11, fill: "#9ca3af" }} allowDecimals={false} />
+                      <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: "#6b7280" }} width={90} />
+                      <Tooltip formatter={(v: unknown) => [`${Number(v)} sold`, "Qty"]} />
+                      <Bar dataKey="qty" name="Qty Sold" fill="#f59e0b" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+
+              {/* Peak Sales Hours */}
+              <div className="card p-4 lg:col-span-3">
+                <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
+                  Peak Sales Hours ({new Date(selectedDate).toLocaleDateString("en-PH", { month: "short", day: "numeric" })})
+                </h3>
+                {orders.length === 0 ? (
+                  <div className="flex items-center justify-center h-[140px] text-gray-400 text-sm">No orders for this date</div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={140}>
+                    <BarChart data={peakHoursData} margin={{ top: 4, right: 8, left: -10, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis dataKey="hour" tick={{ fontSize: 10, fill: "#9ca3af" }} />
+                      <YAxis tick={{ fontSize: 11, fill: "#9ca3af" }} allowDecimals={false} />
+                      <Tooltip formatter={(v: unknown) => { const n = Number(v); return [`${n} order${n !== 1 ? "s" : ""}`, ""]; }} />
+                      <Bar dataKey="orders" name="Orders" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ===== OVERRIDE MODAL ===== */}
       {showOverrideModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
