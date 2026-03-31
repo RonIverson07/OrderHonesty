@@ -74,7 +74,7 @@ export default function LoginPage() {
       }
 
       const supabase = createClient();
-      
+
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -113,7 +113,7 @@ export default function LoginPage() {
       } else {
         router.push("/barista");
       }
-      
+
       router.refresh();
     } catch (err: any) {
       showToast(err.message || "An unexpected error occurred.");
@@ -161,13 +161,13 @@ export default function LoginPage() {
         </div>
       </div>
 
-      <div className="min-h-screen bg-neutral-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-neutral-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8 -mt-15">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
           <div className="flex justify-center mb-6">
-            <img 
-              src="/startuplogo.jpg" 
+            <img
+              src="/startuplogo.png"
               alt="StartupLab Logo"
-              className="h-40 w-auto object-contain drop-shadow-sm" 
+              className="h-28 w-auto object-contain drop-shadow-sm"
             />
           </div>
           <h2 className="mt-2 text-center text-3xl font-bold text-gray-900">
@@ -182,26 +182,24 @@ export default function LoginPage() {
         </div>
 
         <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-          
+
           {/* Mode Toggle */}
           <div className="flex bg-neutral-200 p-1 rounded-lg mb-6 shadow-inner mx-4 sm:mx-0">
             <button
               onClick={() => setLoginMode("barista")}
-              className={`flex flex-1 items-center justify-center gap-2 py-2 text-sm font-medium rounded-md transition-all ${
-                loginMode === "barista" 
-                  ? "bg-white text-amber-700 shadow-sm" 
-                  : "text-neutral-500 hover:text-neutral-700"
-              }`}
+              className={`flex flex-1 items-center justify-center gap-2 py-2 text-sm font-medium rounded-md transition-all ${loginMode === "barista"
+                ? "bg-white text-amber-700 shadow-sm"
+                : "text-neutral-500 hover:text-neutral-700"
+                }`}
             >
               <Coffee className="w-4 h-4" /> Login as Barista
             </button>
             <button
               onClick={() => setLoginMode("admin")}
-              className={`flex flex-1 items-center justify-center gap-2 py-2 text-sm font-medium rounded-md transition-all ${
-                loginMode === "admin" 
-                  ? "bg-white text-amber-700 shadow-sm" 
-                  : "text-neutral-500 hover:text-neutral-700"
-              }`}
+              className={`flex flex-1 items-center justify-center gap-2 py-2 text-sm font-medium rounded-md transition-all ${loginMode === "admin"
+                ? "bg-white text-amber-700 shadow-sm"
+                : "text-neutral-500 hover:text-neutral-700"
+                }`}
             >
               <BarChart3 className="w-4 h-4 text-emerald-600" /> Login as Admin
             </button>
@@ -209,10 +207,10 @@ export default function LoginPage() {
 
           <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-neutral-100 mx-4 sm:mx-0">
             <div className="mb-6 text-center text-sm text-neutral-500">
-              {loginMode === "barista" 
-                ? "Access the barista queue and prep dashboard." 
+              {loginMode === "barista"
+                ? "Access the barista queue and prep dashboard."
                 : "Access the system settings and management toolkit."}
-              <br/><br/>
+              <br /><br />
               <span className="text-amber-600 font-medium bg-amber-50 px-2 py-1 rounded">
                 Demo Credentials: {loginMode === "barista" ? "barista@Lebrew.local" : "admin@Lebrew.local"} / admin123
               </span>
