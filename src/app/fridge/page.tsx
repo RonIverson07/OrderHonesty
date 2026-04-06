@@ -221,12 +221,12 @@ export default function FridgePage() {
         <p className="text-gray-500">Grab what you need, select your payment method, and go!</p>
       </div>
 
-      <div className={`${step === "products" ? "block" : "hidden"} xl:block`}>
+      <div className={`${step === "products" ? "block" : "hidden"} 2xl:block`}>
         {isLoading && (
           <div className="relative group">
             <div 
               ref={skeletonScrollRef}
-              className="flex overflow-x-auto snap-x snap-mandatory xl:grid xl:grid-cols-4 gap-4 pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 hide-scrollbar items-stretch xl:pb-0"
+              className="flex overflow-x-auto snap-x snap-mandatory 2xl:grid 2xl:grid-cols-4 gap-4 pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 hide-scrollbar items-stretch 2xl:pb-0"
             >
               {[...Array(4)].map((_, i) => (
                 <div key={i} className="card overflow-hidden snap-start min-w-[220px] md:min-w-[260px] xl:min-w-0 xl:w-auto shrink-0 xl:shrink">
@@ -242,7 +242,7 @@ export default function FridgePage() {
               ))}
             </div>
             {/* Scroll Indicator */}
-            <div className="absolute right-0 top-0 bottom-4 w-12 bg-gradient-to-l from-white/60 via-white/40 to-transparent pointer-events-none flex items-center justify-end px-2 xl:hidden">
+            <div className="absolute right-0 top-0 bottom-4 w-12 bg-gradient-to-l from-white/60 via-white/40 to-transparent pointer-events-none flex items-center justify-end px-2 2xl:hidden">
               <button 
                 onClick={() => skeletonScrollRef.current?.scrollBy({ left: 300, behavior: "smooth" })}
                 className="bg-white/90 p-1.5 rounded-full shadow-md border border-gray-100 pointer-events-auto active:scale-90 transition-all animate-pulse"
@@ -257,10 +257,10 @@ export default function FridgePage() {
           <div className="relative group">
             <div 
               ref={productScrollRef}
-              className="flex overflow-x-auto snap-x snap-mandatory xl:grid xl:grid-cols-3 2xl:grid-cols-4 gap-4 pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 hide-scrollbar items-stretch xl:pb-0"
+              className="flex overflow-x-auto snap-x snap-mandatory 2xl:grid 2xl:grid-cols-4 gap-4 pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 hide-scrollbar items-stretch 2xl:pb-0"
             >
               {products.filter(p => (p.retail_stock?.stock ?? 0) > 0).map((product) => (
-                <div key={product.id} className="snap-start w-[220px] md:w-[260px] xl:w-auto shrink-0 xl:shrink">
+                <div key={product.id} className="snap-start w-[220px] md:w-[260px] 2xl:w-auto shrink-0 2xl:shrink">
                   <ProductCard
                     product={product}
                     qty={quantities[product.id] ?? 0}
@@ -271,7 +271,7 @@ export default function FridgePage() {
               ))}
             </div>
             {/* Scroll Indicator */}
-            <div className="absolute right-0 top-0 bottom-4 w-12 bg-gradient-to-l from-white/60 via-white/40 to-transparent pointer-events-none flex items-center justify-end px-2 xl:hidden">
+            <div className="absolute right-0 top-0 bottom-4 w-12 bg-gradient-to-l from-white/60 via-white/40 to-transparent pointer-events-none flex items-center justify-end px-2 2xl:hidden">
               <button 
                 onClick={() => productScrollRef.current?.scrollBy({ left: 300, behavior: "smooth" })}
                 className="bg-white/90 p-1.5 rounded-full shadow-md border border-gray-100 pointer-events-auto active:scale-90 transition-all animate-pulse"
@@ -283,7 +283,7 @@ export default function FridgePage() {
         )}
 
         {cartItems.length > 0 && (
-          <div className="mt-4 md:mt-6 flex justify-end animate-slide-in xl:hidden">
+          <div className="mt-4 md:mt-6 flex justify-end animate-slide-in 2xl:hidden">
             <button
               onClick={() => setStep("summary")}
               className="btn-primary py-4 px-8 text-lg w-full md:w-auto shadow-xl"
@@ -302,7 +302,7 @@ export default function FridgePage() {
 
       {/* Step 2: Order Summary — items + name + choose payment method */}
       {cartItems.length > 0 && (
-        <div className={`card p-5 md:p-6 lg:p-8 animate-slide-in max-w-5xl mx-auto shadow-2xl xl:shadow-sm border-gray-200 ${step === "summary" ? "block" : "hidden"} xl:block xl:max-w-3xl xl:mt-8`}>
+        <div className={`card p-5 md:p-6 lg:p-8 animate-slide-in max-w-5xl mx-auto shadow-2xl xl:shadow-sm border-gray-200 ${step === "summary" ? "block" : "hidden"} 2xl:block xl:max-w-3xl xl:mt-8`}>
 
           <div className="flex items-center justify-between mb-5 md:mb-6 border-b pb-4">
             <h2 className="text-xl md:text-2xl font-black text-gray-900 tracking-tight">Order Summary</h2>
