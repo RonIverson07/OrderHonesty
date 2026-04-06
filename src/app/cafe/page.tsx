@@ -307,7 +307,7 @@ export default function CafePage() {
 
       {/* Step 2: Order Summary — items + name + choose payment method */}
       {cartItems.length > 0 && (
-        <div className={`card p-5 md:p-6 lg:p-8 animate-slide-in max-w-5xl mx-auto shadow-2xl xl:shadow-sm border-gray-200 ${step === "summary" ? "block mt-4 md:mt-8" : "hidden"} 2xl:block xl:max-w-3xl xl:mt-8`}>
+        <div className={`card p-5 md:p-6 lg:p-8 animate-slide-in max-w-6xl mx-auto shadow-2xl xl:shadow-sm border-gray-200 ${step === "summary" ? "block mt-4 md:mt-8" : "hidden"} 2xl:block 2xl:max-w-7xl xl:mt-8`}>
 
           <div className="flex items-center justify-between mb-5 md:mb-6 border-b pb-4">
             <h2 className="text-xl md:text-2xl font-black text-gray-900 tracking-tight">Your Order</h2>
