@@ -336,23 +336,23 @@ export default function FridgePage() {
 
                 <div className="bg-gray-50/80 p-4 rounded-2xl border border-gray-200/60 shadow-sm transition-all duration-300 hover:shadow-md">
                   <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase tracking-[0.2em]">Customer Name</label>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 items-center">
                     <input
                       id="customer-name-input"
                       type="text"
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
                       placeholder="Enter your name..."
-                      className="flex-1 max-w-[350px] px-5 py-3.5 rounded-2xl border border-gray-200 text-lg font-bold text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 bg-white transition-all shadow-sm"
+                      className="flex-none w-full max-w-[240px] px-4 py-3.5 rounded-2xl border border-gray-200 text-base font-bold text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 bg-white transition-all shadow-sm"
                       maxLength={100}
                     />
                     <button
                       type="button"
                       onClick={() => document.getElementById("customer-name-input")?.blur()}
-                      className="px-4 py-3.5 bg-white border border-gray-200 text-gray-400 rounded-2xl text-xs font-black hover:bg-gray-50 hover:text-gray-600 flex items-center gap-2 active:scale-90 transition-all shadow-sm outline-none"
+                      className="p-3.5 bg-white border border-gray-200 text-gray-400 rounded-2xl text-xs font-black hover:bg-gray-50 hover:text-gray-600 flex items-center justify-center active:scale-90 transition-all shadow-sm outline-none"
                     >
                       <Keyboard className="w-5 h-5" />
-                      <span className="hidden 2xl:inline">HIDE</span>
+                      <span className="hidden 2xl:inline ml-2">HIDE</span>
                     </button>
                   </div>
                 </div>
