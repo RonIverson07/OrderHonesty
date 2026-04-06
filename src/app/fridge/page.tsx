@@ -336,14 +336,14 @@ export default function FridgePage() {
 
                 <div className="bg-gray-50/80 p-4 rounded-2xl border border-gray-200/60 shadow-sm transition-all duration-300 hover:shadow-md">
                   <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase tracking-[0.2em]">Customer Name</label>
-                  <div className="flex gap-2 items-center">
+                  <div className="flex gap-2 items-center max-w-lg">
                     <input
                       id="customer-name-input"
                       type="text"
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
                       placeholder="Enter your name..."
-                      className="flex-none w-full max-w-[240px] px-4 py-3.5 rounded-2xl border border-gray-200 text-base font-bold text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 bg-white transition-all shadow-sm"
+                      className="flex-1 px-5 py-3.5 rounded-2xl border border-gray-200 text-lg font-bold text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 bg-white transition-all shadow-sm"
                       maxLength={100}
                     />
                     <button
