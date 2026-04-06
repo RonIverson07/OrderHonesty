@@ -312,13 +312,13 @@ export default function CafePage() {
             <h2 className="text-xl md:text-2xl font-black text-gray-900 tracking-tight">Your Order</h2>
             <button
               onClick={() => setStep("products")}
-              className="xl:hidden px-4 md:px-5 py-2 md:py-2.5 bg-gray-100 hover:bg-gray-200 active:scale-95 transition-all rounded-xl text-sm md:text-base font-bold text-gray-700 flex items-center gap-2"
+              className="2xl:hidden px-4 md:px-5 py-2 md:py-2.5 bg-gray-100 hover:bg-gray-200 active:scale-95 transition-all rounded-xl text-sm md:text-base font-bold text-gray-700 flex items-center gap-2"
             >
               <span>←</span> Back
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 lg:gap-12 xl:grid-cols-1">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
 
             {/* Left: Items & Total */}
             <div className="flex flex-col space-y-5 md:space-y-6">
