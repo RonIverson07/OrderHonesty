@@ -79,11 +79,6 @@ export default function CafeProductCard({
             Unavailable
           </div>
         )}
-        {!isOutOfStock && maxQty !== undefined && maxQty > 0 && maxQty <= 5 && (
-          <div className="absolute top-2 right-2 px-2 py-1 rounded-full bg-amber-500 text-white text-xs font-semibold">
-            {maxQty} left
-          </div>
-        )}
       </div>
 
       {/* Content */}
@@ -173,11 +168,6 @@ export default function CafeProductCard({
                   <span className={`px-2.5 py-1 text-[10px] uppercase tracking-wider font-bold rounded-full bg-amber-100 text-amber-800`}>
                     ☕ Handcrafted
                   </span>
-                  {!isOutOfStock && maxQty !== undefined && maxQty > 0 && maxQty <= 5 && (
-                    <span className="px-2.5 py-1 text-[10px] uppercase tracking-wider font-bold rounded-full bg-orange-100 text-orange-800">
-                      ⚡ Low Ingredients
-                    </span>
-                  )}
                   {isOutOfStock && (
                     <span className="px-2.5 py-1 text-[10px] uppercase tracking-wider font-bold rounded-full bg-red-100 text-red-800">
                       🚨 Unavailable
@@ -188,9 +178,6 @@ export default function CafeProductCard({
                 <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900 mb-1 leading-tight">{product.name}</h2>
                 <div className="flex items-baseline justify-between mb-8">
                   <p className="text-xl md:text-2xl font-bold text-amber-600">{formatCurrency(product.selling_price)}</p>
-                  {!isOutOfStock && maxQty !== undefined && maxQty > 0 && (
-                    <p className="text-sm font-medium text-gray-500">Max {maxQty} servings</p>
-                  )}
                 </div>
 
                 {/* Modal Auto-Quantity Counter Simulator */}

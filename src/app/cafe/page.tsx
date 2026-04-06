@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/browser";
 import { submitOrder, adminUploadFile } from "@/lib/domain/orders";
 import { formatCurrency } from "@/lib/utils";
 import type { CafeProductAvailability, PaymentMethod } from "@/lib/types";
-import { Coffee, Banknote, Smartphone, QrCode, Landmark, CreditCard, Keyboard, Lightbulb, CheckSquare, ChevronRight, User, AlertCircle, X } from "lucide-react";
+import { Coffee, Banknote, Smartphone, QrCode, Landmark, CreditCard, Keyboard, Lightbulb, CheckSquare, ChevronRight, User, AlertCircle, X, ArrowRight } from "lucide-react";
 
 const ALL_PAYMENT_OPTIONS: { value: PaymentMethod; label: string; icon: React.ReactNode }[] = [
   { value: "cash", label: "Cash", icon: <Banknote className="w-5 h-5 text-green-600" /> },
@@ -231,7 +231,7 @@ export default function CafePage() {
       <div className={`${step === "products" ? "block" : "hidden"} 2xl:block`}>
         {isLoading && (
           <div className="relative group">
-            <div 
+            <div
               ref={skeletonScrollRef}
               className="flex overflow-x-auto snap-x snap-mandatory 2xl:grid 2xl:grid-cols-4 gap-4 pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 hide-scrollbar items-stretch 2xl:pb-0"
             >
@@ -250,7 +250,7 @@ export default function CafePage() {
             </div>
             {/* Scroll Indicator */}
             <div className="absolute right-0 top-0 bottom-4 w-12 bg-gradient-to-l from-white/60 via-white/40 to-transparent pointer-events-none flex items-center justify-end px-2 2xl:hidden">
-              <button 
+              <button
                 onClick={() => skeletonScrollRef.current?.scrollBy({ left: 300, behavior: "smooth" })}
                 className="bg-white/90 p-1.5 rounded-full shadow-md border border-gray-100 pointer-events-auto active:scale-90 transition-all animate-pulse"
               >
@@ -262,7 +262,7 @@ export default function CafePage() {
 
         {!isLoading && (
           <div className="relative group">
-            <div 
+            <div
               ref={productScrollRef}
               className="flex overflow-x-auto snap-x snap-mandatory 2xl:grid 2xl:grid-cols-4 gap-4 pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 hide-scrollbar items-stretch 2xl:pb-0"
             >
@@ -278,7 +278,7 @@ export default function CafePage() {
             </div>
             {/* Scroll Indicator */}
             <div className="absolute right-0 top-0 bottom-4 w-12 bg-gradient-to-l from-white/60 via-white/40 to-transparent pointer-events-none flex items-center justify-end px-2 2xl:hidden">
-              <button 
+              <button
                 onClick={() => productScrollRef.current?.scrollBy({ left: 300, behavior: "smooth" })}
                 className="bg-white/90 p-1.5 rounded-full shadow-md border border-gray-100 pointer-events-auto active:scale-90 transition-all animate-pulse"
               >
@@ -294,12 +294,13 @@ export default function CafePage() {
               onClick={() => setStep("summary")}
               className="btn-primary py-4 px-8 text-lg w-full md:w-auto shadow-xl flex items-center justify-center gap-2"
             >
-              Next: Review Order ({cartItems.length} items)
+              Review Order
             </button>
           </div>
         )}
 
-        <style dangerouslySetInnerHTML={{ __html: `
+        <style dangerouslySetInnerHTML={{
+          __html: `
           .hide-scrollbar::-webkit-scrollbar { display: none; }
           .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         `}} />
@@ -355,7 +356,7 @@ export default function CafePage() {
                       onClick={() => document.getElementById("customer-name-input")?.blur()}
                       className="p-3.5 bg-white border border-gray-200 text-gray-400 rounded-2xl text-xs font-black hover:bg-gray-50 hover:text-gray-600 flex items-center justify-center active:scale-90 transition-all shadow-sm outline-none"
                     >
-                      <Keyboard className="w-5 h-5" />
+                      <ArrowRight className="w-5 h-5" />
                       <span className="hidden 2xl:inline ml-2">HIDE</span>
                     </button>
                   </div>
@@ -379,9 +380,9 @@ export default function CafePage() {
                         }
                         setPaymentMethod(opt.value);
                         if (opt.value === "cash") {
-                           handleSubmitClick();
+                          handleSubmitClick();
                         } else {
-                           setStep("payment");
+                          setStep("payment");
                         }
                       }}
                       className="flex flex-col items-center justify-center flex-1 min-w-[80px] py-4 md:py-6 px-2 rounded-2xl text-xs md:text-sm font-bold transition-all border-2 shadow-sm bg-white border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 active:bg-gray-100 active:scale-95"
@@ -444,13 +445,13 @@ export default function CafePage() {
               className="w-full py-2.5 shadow-xl text-lg font-black rounded-2xl transition-all active:scale-95 bg-sky-400 hover:bg-sky-500 text-white shadow-sky-400/30 flex justify-center items-center gap-2"
             >
               {status === "submitting" ? (
-                 "Submitting..."
-               ) : (
-                 <>
-                   <CheckSquare fill="#22c55e" color="white" className="w-6 h-6" />
-                   <span>Done paying — Submit Order</span>
-                 </>
-               )}
+                "Submitting..."
+              ) : (
+                <>
+                  <CheckSquare fill="#22c55e" color="white" className="w-6 h-6" />
+                  <span>Done paying — Submit Order</span>
+                </>
+              )}
             </button>
             <p className="text-[10px] text-center text-gray-500 font-medium -mt-1 leading-tight">
               Tap only after your payment is complete. The camera will instantly open for a quick verification selfie.
@@ -523,7 +524,7 @@ export default function CafePage() {
                 Got it!
               </button>
             </div>
-            <button 
+            <button
               onClick={() => setShowNameModal(false)}
               className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 transition-colors"
             >

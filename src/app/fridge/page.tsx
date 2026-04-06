@@ -289,7 +289,7 @@ export default function FridgePage() {
               onClick={() => setStep("summary")}
               className="btn-primary py-4 px-8 text-lg w-full md:w-auto shadow-xl"
             >
-              Next: Review Order ({cartItems.length} items)
+              Review Order
             </button>
           </div>
         )}

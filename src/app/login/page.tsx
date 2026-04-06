@@ -60,7 +60,7 @@ export default function LoginPage() {
       const isDemoMode = !rawUrl || rawUrl === "https://demo.supabase.co" || !rawUrl.startsWith("http");
 
       if (isDemoMode) {
-        if (email === "admin@Lebrew.local" && password === "admin123") {
+        if (email === "admin@zencafe.local" && password === "admin123") {
           document.cookie = `demo_role=${loginMode}; path=/`;
           if (loginMode === "admin") {
             router.push("/dashboard");
@@ -212,7 +212,7 @@ export default function LoginPage() {
                 : "Access the system settings and management toolkit."}
               <br /><br />
               <span className="text-amber-600 font-medium bg-amber-50 px-2 py-1 rounded">
-                Demo Credentials: {loginMode === "barista" ? "barista@Lebrew.local" : "admin@Lebrew.local"} / admin123
+                Demo Credentials: {loginMode === "barista" ? "barista@zencafe.local" : "admin@zencafe.local"} / admin123
               </span>
             </div>
 
