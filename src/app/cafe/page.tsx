@@ -337,8 +337,8 @@ export default function CafePage() {
                   <span className="text-2xl md:text-3xl font-black text-amber-600">{formatCurrency(totalPrice)}</span>
                 </div>
 
-                <div className="bg-gray-50/80 p-3.5 rounded-2xl border border-gray-200/60 shadow-sm">
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Customer Name</label>
+                <div className="bg-gray-50/80 p-3 rounded-2xl border border-gray-200/60 shadow-sm">
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wider">Customer Name</label>
                   <div className="flex gap-1.5">
                     <input
                       id="customer-name-input"
@@ -346,16 +346,16 @@ export default function CafePage() {
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
                       placeholder="e.g. Robi"
-                      className="flex-1 px-3 py-3 rounded-xl border border-gray-300 text-base font-medium focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white shadow-sm"
+                      className="flex-1 max-w-[220px] px-3 py-2 rounded-xl border border-gray-300 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white shadow-sm"
                       maxLength={100}
                     />
                     <button
                       type="button"
                       onClick={() => document.getElementById("customer-name-input")?.blur()}
-                      className="px-3 py-3 bg-white border border-gray-300 text-gray-700 rounded-xl text-sm font-bold hover:bg-gray-50 flex items-center gap-2 active:scale-95 transition-all shadow-sm outline-none"
+                      className="px-2.5 py-2 bg-white border border-gray-300 text-gray-700 rounded-xl text-xs font-bold hover:bg-gray-50 flex items-center gap-1.5 active:scale-95 transition-all shadow-sm outline-none"
                     >
-                      <Keyboard className="w-5 h-5 text-gray-500" />
-                      <span className="hidden xl:inline">Hide</span>
+                      <Keyboard className="w-4 h-4 text-gray-500" />
+                      <span className="hidden 2xl:inline">Hide</span>
                     </button>
                   </div>
                 </div>
