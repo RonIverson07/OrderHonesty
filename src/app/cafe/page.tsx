@@ -337,25 +337,25 @@ export default function CafePage() {
                   <span className="text-2xl md:text-3xl font-black text-amber-600">{formatCurrency(totalPrice)}</span>
                 </div>
 
-                <div className="bg-gray-50/80 p-4 rounded-2xl border border-gray-200/60 shadow-sm">
+                <div className="bg-gray-50/80 p-3.5 rounded-2xl border border-gray-200/60 shadow-sm">
                   <label className="block text-sm font-bold text-gray-700 mb-2">Customer Name</label>
-                  <div className="flex gap-2">
+                  <div className="flex gap-1.5">
                     <input
                       id="customer-name-input"
                       type="text"
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
                       placeholder="e.g. Robi"
-                      className="flex-1 px-4 py-3 rounded-xl border border-gray-300 text-base font-medium focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white shadow-sm"
+                      className="flex-1 px-3 py-3 rounded-xl border border-gray-300 text-base font-medium focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white shadow-sm"
                       maxLength={100}
                     />
                     <button
                       type="button"
                       onClick={() => document.getElementById("customer-name-input")?.blur()}
-                      className="px-4 py-3 bg-white border border-gray-300 text-gray-700 rounded-xl text-sm font-bold hover:bg-gray-50 flex items-center gap-2 active:scale-95 transition-all shadow-sm outline-none"
+                      className="px-3 py-3 bg-white border border-gray-300 text-gray-700 rounded-xl text-sm font-bold hover:bg-gray-50 flex items-center gap-2 active:scale-95 transition-all shadow-sm outline-none"
                     >
                       <Keyboard className="w-5 h-5 text-gray-500" />
-                      <span className="hidden sm:inline">Hide</span>
+                      <span className="hidden xl:inline">Hide</span>
                     </button>
                   </div>
                 </div>
