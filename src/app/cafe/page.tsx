@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/browser";
 import { submitOrder, adminUploadFile } from "@/lib/domain/orders";
 import { formatCurrency } from "@/lib/utils";
 import type { CafeProductAvailability, PaymentMethod } from "@/lib/types";
-import { Coffee, Banknote, Smartphone, QrCode, Landmark, CreditCard, Keyboard, Lightbulb, CheckSquare, ChevronRight } from "lucide-react";
+import { Coffee, Banknote, Smartphone, QrCode, Landmark, CreditCard, Keyboard, Lightbulb, CheckSquare, ChevronRight, User, AlertCircle, X } from "lucide-react";
 
 const ALL_PAYMENT_OPTIONS: { value: PaymentMethod; label: string; icon: React.ReactNode }[] = [
   { value: "cash", label: "Cash", icon: <Banknote className="w-5 h-5 text-green-600" /> },
@@ -35,6 +35,7 @@ export default function CafePage() {
   const isSubmitting = useRef(false);
   const productScrollRef = useRef<HTMLDivElement>(null);
   const skeletonScrollRef = useRef<HTMLDivElement>(null);
+  const [showNameModal, setShowNameModal] = useState(false);
 
   // 3-step UX flow
   const [step, setStep] = useState<"products" | "summary" | "payment">("products");
@@ -337,25 +338,25 @@ export default function CafePage() {
                   <span className="text-2xl md:text-3xl font-black text-amber-600">{formatCurrency(totalPrice)}</span>
                 </div>
 
-                <div className="bg-gray-50/80 p-3 rounded-2xl border border-gray-200/60 shadow-sm">
-                  <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase tracking-wider">Customer Name</label>
-                  <div className="flex gap-1.5">
+                <div className="bg-gray-50/80 p-4 rounded-2xl border border-gray-200/60 shadow-sm transition-all duration-300 hover:shadow-md">
+                  <label className="block text-[10px] font-black text-gray-400 mb-2 uppercase tracking-[0.2em]">Customer Name</label>
+                  <div className="flex gap-2">
                     <input
                       id="customer-name-input"
                       type="text"
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
-                      placeholder="e.g. Robi"
-                      className="flex-1 max-w-[220px] px-3 py-2 rounded-xl border border-gray-300 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white shadow-sm"
+                      placeholder="Enter your name..."
+                      className="flex-1 max-w-[350px] px-5 py-3.5 rounded-2xl border border-gray-200 text-lg font-bold text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 bg-white transition-all shadow-sm"
                       maxLength={100}
                     />
                     <button
                       type="button"
                       onClick={() => document.getElementById("customer-name-input")?.blur()}
-                      className="px-2.5 py-2 bg-white border border-gray-300 text-gray-700 rounded-xl text-xs font-bold hover:bg-gray-50 flex items-center gap-1.5 active:scale-95 transition-all shadow-sm outline-none"
+                      className="px-4 py-3.5 bg-white border border-gray-200 text-gray-400 rounded-2xl text-xs font-black hover:bg-gray-50 hover:text-gray-600 flex items-center gap-2 active:scale-90 transition-all shadow-sm outline-none"
                     >
-                      <Keyboard className="w-4 h-4 text-gray-500" />
-                      <span className="hidden 2xl:inline">Hide</span>
+                      <Keyboard className="w-5 h-5" />
+                      <span className="hidden 2xl:inline">HIDE</span>
                     </button>
                   </div>
                 </div>
@@ -501,6 +502,36 @@ export default function CafePage() {
         </div>
       )}
 
+      {/* Custom Name Warning Modal */}
+      {showNameModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
+          <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-md" onClick={() => setShowNameModal(false)} />
+          <div className="relative bg-white rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-10 duration-500">
+            <div className="p-8 text-center">
+              <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                <AlertCircle className="w-10 h-10 text-amber-500" />
+              </div>
+              <h3 className="text-2xl font-black text-gray-900 mb-2">Wait a second!</h3>
+              <p className="text-gray-600 font-medium mb-8">Please enter your name so we know whose drink this is.</p>
+              <button
+                onClick={() => {
+                  setShowNameModal(false);
+                  setTimeout(() => document.getElementById("customer-name-input")?.focus(), 100);
+                }}
+                className="w-full py-4 bg-amber-600 hover:bg-amber-700 text-white rounded-2xl font-black text-lg shadow-xl shadow-amber-500/20 active:scale-95 transition-all outline-none"
+              >
+                Got it!
+              </button>
+            </div>
+            <button 
+              onClick={() => setShowNameModal(false)}
+              className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
