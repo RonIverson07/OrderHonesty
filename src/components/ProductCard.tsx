@@ -47,7 +47,7 @@ export default function ProductCard({
 
   return (
     <div
-      className={`card overflow-hidden animate-slide-in ${isDisabled ? "opacity-60" : ""
+      className={`card overflow-hidden h-full flex flex-col animate-slide-in ${isDisabled ? "opacity-60" : ""
         }`}
     >
       {/* Image Container — click to add +1 */}
@@ -104,7 +104,8 @@ export default function ProductCard({
       </div>
 
       {/* Content */}
-      <div className="p-4">
+      <div className="p-4 flex flex-col flex-1">
+        <div className="flex-1">
         <div className="flex items-start justify-between mb-1">
           <h3 className="text-sm font-semibold text-gray-900">{product.name}</h3>
         </div>
@@ -115,8 +116,10 @@ export default function ProductCard({
           {formatCurrency(product.selling_price)}
         </p>
 
+        </div>
+
         {/* Quantity Controls */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mt-auto pt-3">
           <div className="flex items-center gap-1.5 bg-gray-100 rounded-lg p-1">
             <button
               onClick={() => onQtyChange(Math.max(0, qty - 1))}

@@ -23,7 +23,7 @@ export default function RootLayout({
     <html lang="en" className={inter.variable}>
       <body className="min-h-screen antialiased bg-[#f8f9fb]" suppressHydrationWarning>
         <Navbar />
-        <main className="pt-20 pb-8 px-4 sm:px-6 max-w-7xl mx-auto">
+        <main className="pt-24 pb-8 px-4 sm:px-6 max-w-7xl mx-auto">
           {children}
         </main>
       </body>

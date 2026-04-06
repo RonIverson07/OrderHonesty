@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/browser";
 import { submitOrder, adminUploadFile } from "@/lib/domain/orders";
 import { formatCurrency } from "@/lib/utils";
 import type { ProductWithStock, PaymentMethod } from "@/lib/types";
-import { Snowflake, Banknote, Smartphone, QrCode, Landmark, CreditCard } from "lucide-react";
+import { Snowflake, Banknote, Smartphone, QrCode, Landmark, CreditCard, Keyboard, Lightbulb, CheckSquare, ChevronRight } from "lucide-react";
 
 const ALL_PAYMENT_OPTIONS: { value: PaymentMethod; label: string; icon: React.ReactNode }[] = [
   { value: "cash", label: "Cash", icon: <Banknote className="w-5 h-5 text-green-600" /> },
@@ -28,12 +28,39 @@ export default function FridgePage() {
   const proofInputRef = useRef<HTMLInputElement | null>(null);
   const [isPending, startTransition] = useTransition();
   const [status, setStatus] = useState<"idle" | "snapshot" | "submitting" | "success" | "error">("idle");
+  const productScrollRef = useRef<HTMLDivElement>(null);
+  const skeletonScrollRef = useRef<HTMLDivElement>(null);
   const [snapshotBlob, setSnapshotBlob] = useState<Blob | null>(null);
   const [successOrderNumber, setSuccessOrderNumber] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const isSubmitting = useRef(false);
+
+  // V3: UX Step Flow
+  const [step, setStep] = useState<"products" | "summary" | "payment">("products");
+  const [successCountdown, setSuccessCountdown] = useState(5);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (status === "success") {
+      setSuccessCountdown(5);
+      timer = setInterval(() => {
+        setSuccessCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            setStatus("idle");
+            setStep("products");
+            setQuantities({});
+            setCustomerName("");
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [status]);
 
   useEffect(() => {
     async function load() {
@@ -194,175 +221,236 @@ export default function FridgePage() {
         <p className="text-gray-500">Grab what you need, select your payment method, and go!</p>
       </div>
 
-      {isLoading && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="card overflow-hidden">
-              <Skeleton className="aspect-[4/3] w-full" />
-              <div className="p-4 space-y-3">
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-6 w-1/3" />
-                <div className="flex justify-between items-center pt-2">
-                  <Skeleton className="h-8 w-1/2 rounded-md" />
+      <div className={`${step === "products" ? "block" : "hidden"} xl:block`}>
+        {isLoading && (
+          <div className="relative group">
+            <div 
+              ref={skeletonScrollRef}
+              className="flex overflow-x-auto snap-x snap-mandatory xl:grid xl:grid-cols-4 gap-4 pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 hide-scrollbar items-stretch xl:pb-0"
+            >
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="card overflow-hidden snap-start min-w-[220px] md:min-w-[260px] xl:min-w-0 xl:w-auto shrink-0 xl:shrink">
+                  <Skeleton className="aspect-[4/3] w-full" />
+                  <div className="p-4 space-y-3">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-6 w-1/3" />
+                    <div className="flex justify-between items-center pt-2">
+                      <Skeleton className="h-8 w-1/2 rounded-md" />
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {!isLoading && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
-          {products.filter(p => (p.retail_stock?.stock ?? 0) > 0).map((product) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              qty={quantities[product.id] ?? 0}
-              onQtyChange={(q) => setQty(product.id, q)}
-              showStock
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Cart Summary & Payment */}
-      {cartItems.length > 0 && (
-        <div className="card p-6 animate-slide-in">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Order Summary</h2>
-
-          <div className="space-y-2 mb-4">
-            {cartItems.map((p) => (
-              <div key={p.id} className="flex justify-between text-sm text-gray-600">
-                <span>{p.name} × {quantities[p.id]}</span>
-                <span className="font-medium">{formatCurrency(p.selling_price * (quantities[p.id] ?? 0))}</span>
-              </div>
-            ))}
-
-            {/* V3: Customer Name */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Your Name</label>
-              <input
-                type="text"
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                placeholder="e.g. Robi"
-                className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"
-                maxLength={100}
-              />
-            </div>
-
-            <div className="pt-4 border-t border-gray-100 flex items-center justify-between mb-4">
-              <span className="text-base font-semibold text-gray-900">Total Selection</span>
-              <span className="text-xl font-bold text-amber-600">{formatCurrency(totalPrice)}</span>
-            </div>
-          </div>
-
-          {/* Payment Method */}
-          <div className="mb-4">
-            <label className="text-sm text-gray-500 mb-2 block">Payment Method</label>
-            <div className="flex gap-2">
-              {ALL_PAYMENT_OPTIONS.filter(opt => enabledPayments[opt.value]).map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => setPaymentMethod(opt.value)}
-                  className={`flex flex-col items-center justify-center flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-all border ${paymentMethod === opt.value
-                    ? "bg-amber-50 border-amber-300 text-amber-700"
-                    : "bg-white border-gray-200 text-gray-500 hover:bg-gray-50"
-                    }`}
-                >
-                  <span className="mb-0.5">{opt.icon}</span>
-                  {opt.label}
-                </button>
               ))}
             </div>
+            {/* Scroll Indicator */}
+            <div className="absolute right-0 top-0 bottom-4 w-12 bg-gradient-to-l from-white/60 via-white/40 to-transparent pointer-events-none flex items-center justify-end px-2 xl:hidden">
+              <button 
+                onClick={() => skeletonScrollRef.current?.scrollBy({ left: 300, behavior: "smooth" })}
+                className="bg-white/90 p-1.5 rounded-full shadow-md border border-gray-100 pointer-events-auto active:scale-90 transition-all animate-pulse"
+              >
+                <ChevronRight className="w-5 h-5 text-blue-500" />
+              </button>
+            </div>
           </div>
-          {/* QR Code Helper for GCash */}
-          {paymentMethod === "gcash" && (
-            <div className="mb-4 p-4 md:p-5 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 animate-slide-in">
-              <div className="flex flex-col sm:flex-row gap-8 md:gap-12 items-center justify-center mb-6 mt-2 max-w-4xl mx-auto">
-                {/* Left: QR Code */}
-                <div className="w-full sm:max-w-[380px] shrink-0 flex justify-center">
-                  <div className="w-full max-w-[380px] aspect-square bg-white rounded-[24px] p-5 border border-amber-100 shadow-md overflow-hidden flex items-center justify-center">
-                    <img
-                      src="/newqr.jpg"
-                      alt="GCash QR Code"
-                      className="w-full h-full object-contain mix-blend-multiply"
+        )}
+
+        {!isLoading && (
+          <div className="relative group">
+            <div 
+              ref={productScrollRef}
+              className="flex overflow-x-auto snap-x snap-mandatory xl:grid xl:grid-cols-3 2xl:grid-cols-4 gap-4 pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 hide-scrollbar items-stretch xl:pb-0"
+            >
+              {products.filter(p => (p.retail_stock?.stock ?? 0) > 0).map((product) => (
+                <div key={product.id} className="snap-start w-[220px] md:w-[260px] xl:w-auto shrink-0 xl:shrink">
+                  <ProductCard
+                    product={product}
+                    qty={quantities[product.id] ?? 0}
+                    onQtyChange={(q) => setQty(product.id, q)}
+                    showStock
+                  />
+                </div>
+              ))}
+            </div>
+            {/* Scroll Indicator */}
+            <div className="absolute right-0 top-0 bottom-4 w-12 bg-gradient-to-l from-white/60 via-white/40 to-transparent pointer-events-none flex items-center justify-end px-2 xl:hidden">
+              <button 
+                onClick={() => productScrollRef.current?.scrollBy({ left: 300, behavior: "smooth" })}
+                className="bg-white/90 p-1.5 rounded-full shadow-md border border-gray-100 pointer-events-auto active:scale-90 transition-all animate-pulse"
+              >
+                <ChevronRight className="w-5 h-5 text-blue-500" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {cartItems.length > 0 && (
+          <div className="mt-4 md:mt-6 flex justify-end animate-slide-in xl:hidden">
+            <button
+              onClick={() => setStep("summary")}
+              className="btn-primary py-4 px-8 text-lg w-full md:w-auto shadow-xl"
+            >
+              Next: Review Order ({cartItems.length} items)
+            </button>
+          </div>
+        )}
+
+        <style dangerouslySetInnerHTML={{
+          __html: `
+          .hide-scrollbar::-webkit-scrollbar { display: none; }
+          .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        `}} />
+      </div>
+
+      {/* Step 2: Order Summary — items + name + choose payment method */}
+      {cartItems.length > 0 && (
+        <div className={`card p-5 md:p-6 lg:p-8 animate-slide-in max-w-5xl mx-auto shadow-2xl xl:shadow-sm border-gray-200 ${step === "summary" ? "block" : "hidden"} xl:block xl:max-w-3xl xl:mt-8`}>
+
+          <div className="flex items-center justify-between mb-5 md:mb-6 border-b pb-4">
+            <h2 className="text-xl md:text-2xl font-black text-gray-900 tracking-tight">Order Summary</h2>
+            <button
+              onClick={() => setStep("products")}
+              className="xl:hidden px-4 md:px-5 py-2 md:py-2.5 bg-gray-100 hover:bg-gray-200 active:scale-95 transition-all rounded-xl text-sm md:text-base font-bold text-gray-700 flex items-center gap-2"
+            >
+              <span>←</span> Back
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 lg:gap-12 xl:grid-cols-1">
+
+            {/* Left Column: Items & Total */}
+            <div className="flex flex-col space-y-5 md:space-y-6">
+              <div className="space-y-2 md:space-y-3">
+                {cartItems.map((p) => (
+                  <div key={p.id} className="flex justify-between text-base text-gray-700">
+                    <span className="font-medium">{p.name} <span className="text-gray-400 mx-1">×</span> <span className="font-bold text-gray-900">{quantities[p.id]}</span></span>
+                    <span className="font-bold text-gray-900">{formatCurrency(p.selling_price * (quantities[p.id] ?? 0))}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-4 border-t border-gray-200 flex flex-col gap-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-lg md:text-xl font-bold text-gray-900">Total Selection</span>
+                  <span className="text-2xl md:text-3xl font-black text-amber-600">{formatCurrency(totalPrice)}</span>
+                </div>
+
+                <div className="bg-gray-50/80 p-4 rounded-2xl border border-gray-200/60 shadow-sm">
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Customer Name</label>
+                  <div className="flex gap-2">
+                    <input
+                      id="customer-name-input"
+                      type="text"
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                      placeholder="e.g. Robi"
+                      className="flex-1 px-4 py-3 rounded-xl border border-gray-300 text-base font-medium focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white shadow-sm"
+                      maxLength={100}
                     />
-                  </div>
-                </div>
-
-                {/* Right: How to Pay */}
-                <div className="w-full sm:max-w-[380px] flex flex-col justify-center py-4">
-                  <h4 className="text-base md:text-lg font-black text-amber-900 flex items-center gap-2.5 tracking-widest uppercase mb-6">
-                    <span className="w-7 h-7 rounded-full border-2 border-amber-600 text-amber-600 flex items-center justify-center text-sm font-bold">i</span>
-                    How to Pay
-                  </h4>
-                  <div className="space-y-6">
-                    <div className="flex items-center gap-4">
-                      <span className="shrink-0 w-9 h-9 rounded-lg bg-amber-200 text-amber-900 font-bold flex items-center justify-center text-base shadow-sm opacity-90">1</span>
-                      <p className="text-base md:text-lg text-gray-800 font-medium leading-snug">Open <strong className="text-blue-600">GCash</strong> and tap 'Scan QR'</p>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <span className="shrink-0 w-9 h-9 rounded-lg bg-amber-200 text-amber-900 font-bold flex items-center justify-center text-base shadow-sm opacity-90">2</span>
-                      <p className="text-base md:text-lg text-gray-800 font-medium leading-snug">Scan the code on the left</p>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <span className="shrink-0 w-9 h-9 rounded-lg bg-amber-200 text-amber-900 font-bold flex items-center justify-center text-base shadow-sm opacity-90">3</span>
-                      <p className="text-base md:text-lg text-gray-800 font-medium leading-snug">Enter exact amount and confirm</p>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => document.getElementById("customer-name-input")?.blur()}
+                      className="px-4 py-3 bg-white border border-gray-300 text-gray-700 rounded-xl text-sm font-bold hover:bg-gray-50 flex items-center gap-2 active:scale-95 transition-all shadow-sm outline-none"
+                    >
+                      <Keyboard className="w-5 h-5 text-gray-500" />
+                      <span className="hidden sm:inline">Hide</span>
+                    </button>
                   </div>
                 </div>
               </div>
+            </div>
 
-              <div className="pt-4 border-t border-amber-200/60">
-                <p className="text-[11px] text-amber-800 mt-1 text-center font-medium leading-relaxed bg-amber-100/50 p-3 rounded-xl border border-amber-200/50 shadow-sm">
-                  Get ready to take a fun selfie with your payment proof! 📸 <br />
-                  After paying, click <strong className="text-amber-900 font-bold">Submit Order</strong> or message us your proof at <a href="https://www.facebook.com/StartupLabAI" target="_blank" rel="noopener noreferrer" className="underline font-bold text-amber-900 hover:text-amber-700 transition-colors">StartupLabAI</a> ✨
-                </p>
+            {/* Right Column: Payment Method Selector + Next */}
+            <div className="flex flex-col border-t md:border-t-0 md:border-l xl:border-l-0 xl:border-t border-gray-100 pt-5 md:pt-0 md:pl-8 lg:pl-12 xl:pl-0 xl:pt-6">
+
+              <div className="mb-5 flex-1">
+                <label className="text-sm font-bold text-gray-700 mb-3 block">How will you pay?</label>
+                <div className="flex flex-wrap gap-2 md:gap-3">
+                  {ALL_PAYMENT_OPTIONS.filter(opt => enabledPayments[opt.value]).map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => {
+                        if (!customerName.trim()) {
+                          alert("Please enter your name to proceed.");
+                          return;
+                        }
+                        setPaymentMethod(opt.value);
+                        if (opt.value === "cash") {
+                           handleSubmitClick();
+                        } else {
+                           setStep("payment");
+                        }
+                      }}
+                      className="flex flex-col items-center justify-center flex-1 min-w-[80px] py-4 md:py-6 px-2 rounded-2xl text-xs md:text-sm font-bold transition-all border-2 shadow-sm bg-white border-gray-200 text-gray-600 hover:bg-gray-50 hover:border-gray-300 active:bg-gray-100 active:scale-95"
+                    >
+                      <span className="mb-2 text-3xl md:text-4xl">{opt.icon}</span>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-xl flex gap-2 items-start">
+                  <Lightbulb className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
+                  <p className="text-[11px] md:text-xs text-blue-700 font-medium leading-snug">
+                    <strong>Tip:</strong> Selecting <strong>Cash</strong> will instantly open the camera for a quick verification selfie. Selecting <strong>GCash</strong> will proceed to the next page to show the GCash QR code.
+                  </p>
+                </div>
               </div>
             </div>
-          )}
+          </div>
+        </div>
+      )}
 
-          {/* Cash Camera Workflow Message */}
-          {paymentMethod === "cash" && (
-            <div className="mb-4 p-3.5 rounded-xl bg-gradient-to-br from-amber-50 to-orange-50/30 border border-amber-200/60 shadow-sm animate-slide-in">
-              <p className="text-[11.5px] text-amber-800 text-center font-medium leading-relaxed">
-                Please be honest and hold your cash next to the items you took from the fridge. <br/>
-                When you click <strong className="text-amber-900 font-bold uppercase tracking-wide">Submit Order</strong>, the camera will instantly open for a quick verification selfie! 📸
-              </p>
+      {/* Step 3: Dedicated Payment Page — no-scroll two-column layout */}
+      {cartItems.length > 0 && step === "payment" && (
+        <div className="card p-3 md:p-4 animate-slide-in max-w-3xl mx-auto shadow-2xl border-gray-200 mt-0">
+
+          {/* Header */}
+          <div className="flex items-center justify-between mb-2 border-b pb-2">
+            <div className="flex items-center gap-3">
+              <span className="inline-flex items-center gap-1.5 bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-black shadow-md">
+                <Smartphone className="w-4 h-4" /> GCash Payment
+              </span>
             </div>
-          )}
+            <button
+              onClick={() => setStep("summary")}
+              className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 active:scale-95 transition-all rounded-xl text-sm font-bold text-gray-700 flex items-center gap-1.5"
+            >
+              <span>←</span> Back
+            </button>
+          </div>
 
-          {/* Payment Proof */}
-          {paymentMethod !== "cash" && paymentMethod !== "gcash" && (
-            <div className="mb-4">
-              <label className="text-sm text-gray-500 mb-2 block">Payment Proof (optional)</label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                ref={proofInputRef}
-                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border file:border-gray-200 file:bg-gray-50 file:text-gray-700 file:text-sm file:font-medium hover:file:bg-gray-100 cursor-pointer"
+          {/* GCash QR — full width, maximized for scanning */}
+          <div className="flex flex-col max-w-xl mx-auto gap-2">
+            <div className="rounded-2xl bg-white border-2 border-blue-100 overflow-hidden shadow-sm p-1">
+              <img
+                src="/newqr.jpg"
+                alt="GCash QR Code"
+                className="w-full object-contain mix-blend-multiply"
+                style={{ maxHeight: "38vh" }}
               />
-              {proofPreview && (
-                <div className="mt-3 relative inline-block">
-                  <img src={proofPreview} alt="" className="h-20 rounded-lg border border-gray-200" />
-                  <button
-                    onClick={() => { setProofFile(null); setProofPreview(null); }}
-                    className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center"
-                  >×</button>
-                </div>
-              )}
             </div>
-          )}
 
-          <button
-            onClick={handleSubmitClick}
-            disabled={isPending || status === "submitting"}
-            className="btn-primary w-full"
-          >
-            {status === "submitting" ? "Submitting..." : `Submit Order — ${formatCurrency(totalPrice)}`}
-          </button>
+            <div className="text-center">
+              <p className="text-xs text-gray-500 font-medium leading-none mb-1">Scan & pay exactly</p>
+              <p className="text-2xl md:text-3xl font-black text-blue-700 tabular-nums leading-none">{formatCurrency(totalPrice)}</p>
+            </div>
+
+            <button
+              onClick={handleSubmitClick}
+              disabled={isPending || status === "submitting"}
+              className="w-full py-2.5 shadow-xl text-lg font-black rounded-2xl transition-all active:scale-95 bg-sky-400 hover:bg-sky-500 text-white shadow-sky-400/30 flex justify-center items-center gap-2"
+            >
+              {status === "submitting" ? (
+                 "Submitting..."
+               ) : (
+                 <>
+                   <CheckSquare fill="#22c55e" color="white" className="w-6 h-6" />
+                   <span>Done paying — Submit Order</span>
+                 </>
+               )}
+            </button>
+            <p className="text-[10px] text-center text-gray-500 font-medium -mt-1 leading-tight">
+              Tap only after your payment is complete. The camera will instantly open for a quick verification selfie.
+            </p>
+          </div>
         </div>
       )}
 
@@ -376,15 +464,32 @@ export default function FridgePage() {
 
       {/* Success */}
       {status === "success" && (
-        <div className="mt-6 p-6 rounded-xl bg-emerald-50 border border-emerald-200 text-center animate-slide-in">
-          <div className="text-lg font-semibold text-emerald-700 mb-1">✅ Order Submitted!</div>
+        <div className="mt-6 p-10 rounded-2xl bg-emerald-50 border border-emerald-200 text-center animate-slide-in max-w-2xl mx-auto shadow-sm">
+          <div className="text-2xl font-black text-emerald-700 mb-2 flex items-center justify-center gap-2">
+            <span className="text-3xl">✅</span> Order Submitted!
+          </div>
           {successOrderNumber && (
-            <div className="text-3xl font-bold text-emerald-600 mb-1">{successOrderNumber}</div>
+            <div className="text-5xl font-black text-emerald-600 mb-4 tracking-tight">{successOrderNumber}</div>
           )}
-          <p className="text-sm text-emerald-600/70">Thank you for your honesty! 🙏</p>
-          <button onClick={() => setStatus("idle")} className="mt-6 w-full sm:w-auto inline-flex justify-center items-center px-8 py-3.5 bg-emerald-600 text-white rounded-xl font-semibold shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 active:scale-95 transition-all text-base">
-            Start New Order
-          </button>
+          <p className="text-lg text-emerald-700/80 font-medium mb-8">Thank you for your honesty! 🙏</p>
+
+          <div className="inline-flex rounded-full bg-emerald-100 text-emerald-800 px-6 py-2 text-sm font-bold animate-pulse">
+            Resetting in {successCountdown}s...
+          </div>
+
+          <div className="mt-8">
+            <button
+              onClick={() => {
+                setStatus("idle");
+                setStep("products");
+                setQuantities({});
+                setCustomerName("");
+              }}
+              className="w-full sm:w-auto inline-flex justify-center items-center px-8 py-4 bg-emerald-600 text-white rounded-xl font-bold shadow-xl shadow-emerald-600/20 hover:bg-emerald-700 active:scale-95 transition-all text-lg"
+            >
+              Start New Order Now
+            </button>
+          </div>
         </div>
       )}
 
