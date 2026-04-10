@@ -33,6 +33,10 @@ export default function DashboardPage() {
   const [isPending, startTransition] = useTransition();
   const [zoomImage, setZoomImage] = useState<string | null>(null);
   const [viewItemsOrder, setViewItemsOrder] = useState<OrderWithItems | null>(null);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const [showCustomExport, setShowCustomExport] = useState(false);
+  const [customStartStr, setCustomStartStr] = useState("");
+  const [customEndStr, setCustomEndStr] = useState("");
 
   useEffect(() => {
     const supabase = createClient();
@@ -159,26 +163,128 @@ export default function DashboardPage() {
   }
 
   // CSV Export
-  const exportOrdersCSV = () => {
-    const headers = ["Order Number", "Source", "Status", "Payment Method", "Confirmed", "Total Price", "Risk Flag", "Date"];
-    const rows = orders.map(o => [
-      o.order_number || o.id,
-      o.source,
-      o.status,
-      o.payment_method,
-      o.payment_confirmed ? "Yes" : "No",
-      o.total_price,
-      o.risk_flag || "None",
-      new Date(o.created_at).toLocaleString()
-    ]);
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `ZenCafe_orders_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const exportOrdersCSV = async (range: "daily" | "weekly" | "monthly" | "q1" | "q2" | "q3" | "q4" | "yearly" | "custom") => {
+    try {
+      const supabase = createClient();
+      const now = new Date();
+      let startDate = new Date();
+      let endDate = new Date();
+      let useEndDate = false;
+
+      if (range === "custom") {
+        if (!customStartStr || !customEndStr) {
+          alert("Please select both start and end dates.");
+          return;
+        }
+        startDate = new Date(customStartStr);
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(customEndStr);
+        endDate.setHours(23, 59, 59, 999);
+        useEndDate = true;
+      } else if (range === "daily") {
+        startDate.setHours(0, 0, 0, 0);
+      } else if (range === "weekly") {
+        const day = startDate.getDay();
+        const diff = startDate.getDate() - day + (day === 0 ? -6 : 1);
+        startDate = new Date(startDate.setDate(diff));
+        startDate.setHours(0, 0, 0, 0);
+      } else if (range === "monthly") {
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      } else if (range === "q1") {
+        startDate = new Date(now.getFullYear(), 0, 1);
+        endDate = new Date(now.getFullYear(), 3, 0, 23, 59, 59, 999);
+        useEndDate = true;
+      } else if (range === "q2") {
+        startDate = new Date(now.getFullYear(), 3, 1);
+        endDate = new Date(now.getFullYear(), 6, 0, 23, 59, 59, 999);
+        useEndDate = true;
+      } else if (range === "q3") {
+        startDate = new Date(now.getFullYear(), 6, 1);
+        endDate = new Date(now.getFullYear(), 9, 0, 23, 59, 59, 999);
+        useEndDate = true;
+      } else if (range === "q4") {
+        startDate = new Date(now.getFullYear(), 9, 1);
+        endDate = new Date(now.getFullYear(), 12, 0, 23, 59, 59, 999);
+        useEndDate = true;
+      } else if (range === "yearly") {
+        startDate = new Date(now.getFullYear(), 0, 1);
+      }
+
+      let query = supabase
+        .from("orders")
+        .select("*, order_items(*, products!product_id(*))")
+        .gte("created_at", startDate.toISOString())
+        .order("created_at", { ascending: false });
+
+      if (useEndDate) {
+        query = query.lte("created_at", endDate.toISOString());
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      const fetchedOrders = data || [];
+      const overallProfit = fetchedOrders.reduce((sum: number, o: any) => {
+        return o.payment_confirmed ? sum + Number(o.total_price || 0) : sum;
+      }, 0);
+      const unconfirmedGap = fetchedOrders.reduce((sum: number, o: any) => {
+        return !o.payment_confirmed ? sum + Number(o.total_price || 0) : sum;
+      }, 0);
+
+      const headers = ["Order Number", "Source", "Items", "Status", "Payment Method", "Confirmed", "Total Price", "Risk Flag", "Date", "", "Overall Profit", "Unconfirmed Gap"];
+      const rows = fetchedOrders.map((o: any, idx: number) => {
+        const itemsStr = o.order_items?.map((i: any) => `${i.qty}x ${i.products?.name}`).join(", ") || "No items";
+        return [
+          o.order_number || o.id,
+          o.source,
+          `"${itemsStr}"`,
+          o.status,
+          o.payment_method,
+          o.payment_confirmed ? "Yes" : "No",
+          o.total_price,
+          o.risk_flag ? "Flagged" : "None",
+          `"${new Date(o.created_at).toLocaleString()}"`,
+          "",
+          idx === 0 ? overallProfit : "",
+          idx === 0 ? unconfirmedGap : ""
+        ];
+      });
+      const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      let rangeLabel = range.charAt(0).toUpperCase() + range.slice(1);
+      if (range.startsWith("q")) rangeLabel = range.toUpperCase();
+      
+      let formattedDate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).replace(',', '');
+      
+      if (range !== "daily") {
+        let printEndDate = new Date();
+        if (range === "monthly") {
+          printEndDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        } else if (range === "yearly") {
+          printEndDate = new Date(now.getFullYear(), 11, 31);
+        } else if (range.startsWith("q") || range === "custom") {
+          printEndDate = endDate;
+        }
+        
+        let startFmt = startDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+        if (range === "custom" || startDate.getFullYear() !== printEndDate.getFullYear()) {
+          startFmt = startDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).replace(',', '');
+        }
+        const endFmt = printEndDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).replace(',', '');
+        formattedDate = `${startFmt} to ${endFmt}`;
+      }
+      
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `Cafe ${rangeLabel} Sales ${formattedDate}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error("CSV Export failed", err);
+      alert("Failed to export dashboard data.");
+    }
   };
 
   return (
@@ -194,13 +300,54 @@ export default function DashboardPage() {
           )}
         </div>
 
-        <button
-          onClick={exportOrdersCSV}
-          disabled={loading}
-          className="btn-secondary text-xs flex items-center gap-2 max-w-fit disabled:opacity-50"
-        >
-          <Download className="w-3.5 h-3.5" /> Export Today&apos;s Orders
-        </button>
+        <div className="relative inline-block text-left">
+          <button
+            type="button"
+            onClick={() => setExportMenuOpen(!exportMenuOpen)}
+            disabled={loading}
+            className="group inline-flex items-center gap-2 justify-center w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 transition-all disabled:opacity-50"
+          >
+            <Download className="w-4 h-4 text-gray-500 group-hover:text-amber-600 transition-colors" />
+            Export CSV...
+            <svg className={`w-4 h-4 text-gray-400 transition-transform ${exportMenuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" /></svg>
+          </button>
+
+          {exportMenuOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setExportMenuOpen(false)} />
+              <div className="absolute right-0 z-50 mt-2 w-48 origin-top-right rounded-xl bg-white shadow-xl border border-gray-100 focus:outline-none overflow-hidden animate-in fade-in slide-in-from-top-2">
+              <div className="py-1">
+                {[
+                  { id: "daily", label: "Daily Sales" },
+                  { id: "weekly", label: "Weekly Sales" },
+                  { id: "monthly", label: "Monthly Sales" },
+                  { id: "q1", label: "Q1 Sales (Jan-Mar)" },
+                  { id: "q2", label: "Q2 Sales (Apr-Jun)" },
+                  { id: "q3", label: "Q3 Sales (Jul-Sep)" },
+                  { id: "q4", label: "Q4 Sales (Oct-Dec)" },
+                  { id: "yearly", label: "Yearly Sales" },
+                  { id: "custom", label: "Custom Date Range..." }
+                ].map((range) => (
+                  <button
+                    key={range.id}
+                    onClick={() => {
+                      setExportMenuOpen(false);
+                      if (range.id === "custom") {
+                        setShowCustomExport(true);
+                      } else {
+                        exportOrdersCSV(range.id as any);
+                      }
+                    }}
+                    className="flex w-full items-center px-4 py-2.5 text-sm font-medium text-gray-600 hover:bg-amber-50 hover:text-amber-700 transition-colors"
+                  >
+                    <span>{range.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            </>
+          )}
+        </div>
       </div>
 
       {loading ? (
@@ -224,13 +371,13 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
             {/* System Health Indicator */}
             <div className={`card p-4 border-l-4 ${healthStatus === "healthy" ? "border-l-emerald-500 bg-emerald-50/30" :
-                healthStatus === "warning" ? "border-l-amber-500 bg-amber-50/30" :
-                  "border-l-red-500 bg-red-50/30"
+              healthStatus === "warning" ? "border-l-amber-500 bg-amber-50/30" :
+                "border-l-red-500 bg-red-50/30"
               }`}>
               <div className="flex items-center gap-3 mb-2">
                 <div className={`w-3 h-3 rounded-full ${healthStatus === "healthy" ? "bg-emerald-500" :
-                    healthStatus === "warning" ? "bg-amber-500 animate-pulse" :
-                      "bg-red-500 animate-pulse"
+                  healthStatus === "warning" ? "bg-amber-500 animate-pulse" :
+                    "bg-red-500 animate-pulse"
                   }`}></div>
                 <h3 className="font-semibold text-gray-900">System Health: <span className="capitalize">{healthStatus}</span></h3>
               </div>
@@ -429,24 +576,72 @@ export default function DashboardPage() {
         </>
       )}
 
+      {/* Custom Date Range Modal */}
+      {showCustomExport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" onClick={() => setShowCustomExport(false)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-in zoom-in-95 leading-tight">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Export Custom Range</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                <input 
+                  type="date" 
+                  value={customStartStr} 
+                  onChange={e => setCustomStartStr(e.target.value)} 
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg hover:border-gray-300 focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 bg-white" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                <input 
+                  type="date" 
+                  value={customEndStr} 
+                  onChange={e => setCustomEndStr(e.target.value)} 
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg hover:border-gray-300 focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 bg-white" 
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setShowCustomExport(false)} className="flex-1 bg-gray-100 text-gray-700 font-bold py-2 rounded-xl hover:bg-gray-200 transition-all text-sm">
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  if (customStartStr && customEndStr) {
+                    exportOrdersCSV("custom");
+                    setShowCustomExport(false);
+                  } else {
+                     alert("Please select both start and end dates.");
+                  }
+                }}
+                className="flex-1 bg-amber-600 text-white font-bold py-2 rounded-xl hover:bg-amber-700 shadow-sm transition-all active:scale-95 text-sm"
+              >
+                Export CSV
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Image Zoom Modal */}
       {zoomImage && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in"
           onClick={() => setZoomImage(null)}
         >
           <div className="relative max-w-3xl max-h-[90vh] w-full flex items-center justify-center">
-            <button 
+            <button
               className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors"
               onClick={() => setZoomImage(null)}
             >
               <span className="text-sm font-medium tracking-wider uppercase bg-white/20 px-4 py-1.5 rounded-full">Close</span>
             </button>
-            <img 
-              src={zoomImage} 
-              alt="Order Snapshot Zoom" 
+            <img
+              src={zoomImage}
+              alt="Order Snapshot Zoom"
               className="w-full h-auto max-h-[85vh] object-contain rounded-xl shadow-2xl"
-              onClick={(e) => e.stopPropagation()} 
+              onClick={(e) => e.stopPropagation()}
             />
           </div>
         </div>
@@ -454,11 +649,11 @@ export default function DashboardPage() {
 
       {/* View All Items Modal */}
       {viewItemsOrder && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in"
           onClick={() => setViewItemsOrder(null)}
         >
-          <div 
+          <div
             className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden animate-slide-in"
             onClick={(e) => e.stopPropagation()}
           >
@@ -469,7 +664,7 @@ export default function DashboardPage() {
               </div>
               <button onClick={() => setViewItemsOrder(null)} className="text-gray-400 hover:text-gray-600 p-2 -mr-2"><X className="w-4 h-4" /></button>
             </div>
-            
+
             <div className="p-6 max-h-[60vh] overflow-y-auto">
               <ul className="space-y-4">
                 {viewItemsOrder.order_items.map((item) => (
@@ -484,7 +679,7 @@ export default function DashboardPage() {
                   </li>
                 ))}
               </ul>
-              
+
               <div className="mt-6 pt-4 border-t border-gray-100 flex justify-between items-center text-base">
                 <span className="font-bold text-gray-500">Total</span>
                 <span className="font-black text-gray-900">{formatCurrency(viewItemsOrder.total_price)}</span>

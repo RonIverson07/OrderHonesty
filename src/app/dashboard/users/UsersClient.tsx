@@ -35,7 +35,7 @@ export default function UsersClient({ initialProfiles }: { initialProfiles: Prof
         }
 
         // Auto-sync emails silently on every load so emails are always up to date
-        syncStaffEmails().catch(() => {/* silent — email column may not exist yet */});
+        syncStaffEmails().catch(() => {/* silent — email column may not exist yet */ });
       } catch (e) {
         console.error("Failed to load profiles:", e);
       } finally {
@@ -192,8 +192,8 @@ export default function UsersClient({ initialProfiles }: { initialProfiles: Prof
                       </td>
                       <td className="py-3 px-5">
                         <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${profile.role === 'admin'
-                            ? 'bg-purple-100 text-purple-700 border border-purple-200'
-                            : 'bg-blue-100 text-blue-700 border border-blue-200'
+                          ? 'bg-purple-100 text-purple-700 border border-purple-200'
+                          : 'bg-blue-100 text-blue-700 border border-blue-200'
                           }`}>
                           {profile.role.charAt(0).toUpperCase() + profile.role.slice(1)}
                         </span>
@@ -207,8 +207,8 @@ export default function UsersClient({ initialProfiles }: { initialProfiles: Prof
                             onClick={() => handleDelete(profile.id)}
                             disabled={isDeleting === profile.id || profile.role === 'admin'}
                             className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded transition-all ${profile.role === 'admin'
-                                ? 'bg-gray-50 text-gray-400 cursor-not-allowed border border-gray-100'
-                                : 'bg-red-50 text-red-600 hover:bg-red-600 hover:text-white border border-red-100'
+                              ? 'bg-gray-50 text-gray-400 cursor-not-allowed border border-gray-100'
+                              : 'bg-red-50 text-red-600 hover:bg-red-600 hover:text-white border border-red-100'
                               }`}
                             title={profile.role === 'admin' ? "Admins cannot delete other admins." : "Delete this operator"}
                           >

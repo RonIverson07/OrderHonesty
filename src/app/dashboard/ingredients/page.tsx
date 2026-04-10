@@ -87,7 +87,7 @@ export default function IngredientsPage() {
               placeholder="Search ingredients..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="input !pl-10 h-10 w-full bg-white border-gray-200 focus:border-amber-500 focus:ring-amber-500"
+              className="pl-10 pr-3 py-2 text-sm w-full bg-white border border-gray-200 rounded-lg shadow-sm hover:border-gray-300 focus:outline-none focus:ring-4 focus:ring-gray-100 focus:border-gray-400 transition-all"
             />
           </div>
           <button onClick={() => { setEditing(null); setShowForm(true); }} className="btn-primary text-sm h-10 px-4">

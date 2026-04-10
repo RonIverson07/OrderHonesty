@@ -92,13 +92,14 @@ export default function Navbar() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <div className="flex h-20 items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2.5 group pt-1">
+          {/* Logo */}
+          <div className="flex items-center gap-2.5 pt-1">
             <img 
               src="/startuplogo.png" 
               alt="StartupLab Logo"
-              className="h-10 sm:h-12 lg:h-14 w-auto object-contain transition-transform group-hover:scale-105 drop-shadow-sm" 
+              className="h-10 sm:h-12 lg:h-14 w-auto object-contain drop-shadow-sm" 
             />
-          </Link>
+          </div>
 
           {/* Nav Links */}
           <div className="flex items-center gap-0.5">

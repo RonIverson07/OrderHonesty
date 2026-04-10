@@ -108,6 +108,10 @@ export default function ReconciliationPage() {
 
   // Weekly orders for analytics charts
   const [weeklyOrders, setWeeklyOrders] = useState<OrderWithItems[]>([]);
+  const [analyticsStart, setAnalyticsStart] = useState(() => {
+    const d = new Date(); d.setDate(d.getDate() - 6); return d.toISOString().slice(0, 10);
+  });
+  const [analyticsEnd, setAnalyticsEnd] = useState(new Date().toISOString().slice(0, 10));
 
   const [orderPage, setOrderPage] = useState(0);
   const [inventoryPage, setInventoryPage] = useState(0);
@@ -120,8 +124,11 @@ export default function ReconciliationPage() {
     setIngredientPage(0);
     loadOrders();
     loadInventory();
-    loadWeeklyOrders();
   }, [selectedDate]);
+
+  useEffect(() => {
+    loadWeeklyOrders();
+  }, [analyticsStart, analyticsEnd]);
 
   async function loadOrders() {
     try {
@@ -152,17 +159,15 @@ export default function ReconciliationPage() {
   async function loadWeeklyOrders() {
     try {
       const supabase = createClient();
-      const anchor = new Date(selectedDate);
-      const sevenDaysAgo = new Date(anchor);
-      sevenDaysAgo.setDate(anchor.getDate() - 6);
-      sevenDaysAgo.setHours(0, 0, 0, 0);
-      const endOfDay = new Date(anchor);
+      const start = new Date(analyticsStart);
+      start.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(analyticsEnd);
       endOfDay.setHours(23, 59, 59, 999);
 
       const { data } = await supabase
         .from("orders")
         .select("*, order_items(*, products!product_id(*))")
-        .gte("created_at", sevenDaysAgo.toISOString())
+        .gte("created_at", start.toISOString())
         .lte("created_at", endOfDay.toISOString())
         .eq("status", "completed")
         .order("created_at", { ascending: true });
@@ -450,12 +455,36 @@ export default function ReconciliationPage() {
           <Link href="/dashboard/reconciliation/history" className="btn-secondary text-sm whitespace-nowrap">
             History &amp; Trends
           </Link>
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="input text-sm"
-          />
+          {activeTab === "analytics" ? (
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 bg-white px-3 py-1.5 border border-gray-200 rounded-xl shadow-sm focus-within:ring-2 focus-within:ring-amber-500/20 focus-within:border-amber-400 transition-all">
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Start</span>
+                <input 
+                  type="date" 
+                  value={analyticsStart} 
+                  onChange={(e) => setAnalyticsStart(e.target.value)} 
+                  className="text-sm bg-transparent border-none outline-none focus:ring-0 text-gray-800 w-[115px] sm:w-[125px] p-0" 
+                />
+              </div>
+              <span className="text-gray-300 font-medium">—</span>
+              <div className="flex items-center gap-2 bg-white px-3 py-1.5 border border-gray-200 rounded-xl shadow-sm focus-within:ring-2 focus-within:ring-amber-500/20 focus-within:border-amber-400 transition-all">
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">End</span>
+                <input 
+                  type="date" 
+                  value={analyticsEnd} 
+                  onChange={(e) => setAnalyticsEnd(e.target.value)} 
+                  className="text-sm bg-transparent border-none outline-none focus:ring-0 text-gray-800 w-[115px] sm:w-[125px] p-0" 
+                />
+              </div>
+            </div>
+          ) : (
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="input text-sm"
+            />
+          )}
         </div>
       </div>
 
@@ -1065,14 +1094,25 @@ export default function ReconciliationPage() {
       )}
       {/* ===== ANALYTICS TAB ===== */}
       {activeTab === "analytics" && (() => {
-        // 7-day revenue trend anchored to selectedDate
-        const revenueByDay: Record<string, { date: string; cafe: number; fridge: number }> = {};
-        for (let i = 6; i >= 0; i--) {
-          const d = new Date(selectedDate);
-          d.setDate(d.getDate() - i);
-          const key = d.toLocaleDateString("en-PH", { month: "short", day: "numeric" });
-          revenueByDay[key] = { date: key, cafe: 0, fridge: 0 };
+        // dynamic revenue trend anchored to analyticsStart and analyticsEnd
+        const revenueByDay: Record<string, { date: string; cafe: number; fridge: number; target: number }> = {};
+        
+        let startD = new Date(analyticsStart);
+        startD.setHours(0,0,0,0);
+        let endD = new Date(analyticsEnd);
+        endD.setHours(0,0,0,0);
+        
+        if (startD.getTime() > endD.getTime()) {
+           const temp = startD; startD = endD; endD = temp;
         }
+
+        let currentD = new Date(startD);
+        while (currentD <= endD) {
+          const key = currentD.toLocaleDateString("en-PH", { month: "short", day: "numeric" });
+          revenueByDay[key] = { date: key, cafe: 0, fridge: 0, target: currentD.getTime() };
+          currentD.setDate(currentD.getDate() + 1);
+        }
+
         weeklyOrders.forEach((o) => {
           const key = new Date(o.created_at).toLocaleDateString("en-PH", { month: "short", day: "numeric" });
           if (revenueByDay[key]) {
@@ -1080,11 +1120,11 @@ export default function ReconciliationPage() {
             else revenueByDay[key].fridge += Number(o.total_price);
           }
         });
-        const revenueTrendData = Object.values(revenueByDay);
+        const revenueTrendData = Object.values(revenueByDay).sort((a,b) => a.target - b.target);
 
-        // Top 5 products for the selected date
+        // Top 5 products for the selected custom range
         const productSales: Record<string, { name: string; qty: number }> = {};
-        orders.forEach((o) =>
+        weeklyOrders.forEach((o) =>
           o.order_items.forEach((item) => {
             const name = item.products?.name ?? "Unknown";
             if (!productSales[name]) productSales[name] = { name, qty: 0 };
@@ -1095,9 +1135,9 @@ export default function ReconciliationPage() {
           .sort((a, b) => b.qty - a.qty)
           .slice(0, 5);
 
-        // Peak hours for the selected date
+        // Peak hours for the selected custom range
         const hourTotals: Record<number, number> = {};
-        orders.forEach((o) => {
+        weeklyOrders.forEach((o) => {
           const h = new Date(o.created_at).getHours();
           hourTotals[h] = (hourTotals[h] ?? 0) + 1;
         });
@@ -1112,10 +1152,10 @@ export default function ReconciliationPage() {
         return (
           <div className="space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              {/* 7-Day Revenue Trend */}
+              {/* Revenue Trend */}
               <div className="card p-4 lg:col-span-2">
                 <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
-                  7-Day Revenue Trend
+                  Revenue Trend
                 </h3>
                 <ResponsiveContainer width="100%" height={200}>
                   <LineChart data={revenueTrendData} margin={{ top: 4, right: 8, left: -10, bottom: 0 }}>
@@ -1133,7 +1173,7 @@ export default function ReconciliationPage() {
               {/* Top Products */}
               <div className="card p-4">
                 <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
-                  Top Products ({new Date(selectedDate).toLocaleDateString("en-PH", { month: "short", day: "numeric" })})
+                  Top Products
                 </h3>
                 {topProductsData.length === 0 ? (
                   <div className="flex items-center justify-center h-[200px] text-gray-400 text-sm">No orders for this date</div>

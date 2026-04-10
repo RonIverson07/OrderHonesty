@@ -115,13 +115,18 @@ export default function RecipesPage() {
         <div className="card p-4">
           <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Café Products</h3>
           <div className="mb-3 flex gap-2">
-            <div className="relative flex-1">
+            <div className="relative flex-1 group">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-hover:text-gray-500 transition-colors pointer-events-none">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </span>
               <input
                 type="text"
                 value={productSearch}
                 onChange={(e) => setProductSearch(e.target.value)}
                 placeholder="Search products..."
-                className="w-full px-3 py-2 pr-8 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"
+                className="w-full pl-10 pr-8 py-2 text-sm bg-white border border-gray-200 rounded-lg shadow-sm hover:border-gray-300 focus:outline-none focus:ring-4 focus:ring-gray-100 focus:border-gray-400 transition-all"
               />
               {productSearch.trim() && (
                 <button
@@ -140,11 +145,10 @@ export default function RecipesPage() {
               <button
                 key={p.id}
                 onClick={() => selectProduct(p)}
-                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
-                  selectedProduct?.id === p.id
+                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${selectedProduct?.id === p.id
                     ? "bg-amber-50 text-amber-700 font-medium"
                     : "text-gray-600 hover:bg-gray-50"
-                }`}
+                  }`}
               >
                 {p.name}
                 <span className="text-xs text-gray-400 ml-2">{formatCurrency(p.selling_price)}</span>

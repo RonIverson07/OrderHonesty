@@ -17,7 +17,7 @@ export default function SettingsClient({ initialSettings, envSettings: _env, aud
   const [payments, setPayments] = useState(initialSettings?.payment_methods_enabled ?? DEFAULT_PAYMENTS);
   const [threshold, setThreshold] = useState(initialSettings?.low_stock_threshold ?? 10);
   const [email, setEmail] = useState(initialSettings?.admin_email ?? "");
-  const [statusMsg, setStatusMsg] = useState<{type: "success"|"error", text: string} | null>(null);
+  const [statusMsg, setStatusMsg] = useState<{ type: "success" | "error", text: string } | null>(null);
 
   useEffect(() => {
     const saved = sessionStorage.getItem("active_settings_tab");
@@ -98,9 +98,8 @@ export default function SettingsClient({ initialSettings, envSettings: _env, aud
           <button
             key={tab}
             onClick={() => changeTab(tab)}
-            className={`px-4 py-3 font-medium capitalize whitespace-nowrap ${
-              activeTab === tab ? "border-b-2 border-amber-500 text-amber-700" : "text-gray-500 hover:text-gray-700"
-            }`}
+            className={`px-4 py-3 font-medium capitalize whitespace-nowrap ${activeTab === tab ? "border-b-2 border-amber-500 text-amber-700" : "text-gray-500 hover:text-gray-700"
+              }`}
           >
             {tab === "audit" ? "Audit Log" : tab}
           </button>
@@ -120,9 +119,9 @@ export default function SettingsClient({ initialSettings, envSettings: _env, aud
             <div>
               <label className="block font-medium text-gray-700 mb-1">Global Low Stock Threshold</label>
               <p className="text-xs text-gray-500 mb-2">Used to trigger low stock warnings and daily emails.</p>
-              <input 
-                type="number" 
-                value={threshold} 
+              <input
+                type="number"
+                value={threshold}
                 onChange={(e) => setThreshold(e.target.value)}
                 min={1} max={100}
                 className="input-field max-w-[100px]"
@@ -132,9 +131,9 @@ export default function SettingsClient({ initialSettings, envSettings: _env, aud
             <div>
               <label className="block font-medium text-gray-700 mb-1">Admin Notification Email</label>
               <p className="text-xs text-gray-500 mb-2">Internal email to receive low stock and reconciliation alerts.</p>
-              <input 
-                type="email" 
-                value={email} 
+              <input
+                type="email"
+                value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="input-field"
                 placeholder="admin@Lebrew.com"
@@ -151,14 +150,14 @@ export default function SettingsClient({ initialSettings, envSettings: _env, aud
         {activeTab === "payments" && (
           <div className="space-y-6 max-w-lg">
             <h3 className="font-medium text-gray-900 mb-4">Enabled Payment Methods</h3>
-            
+
             <div className="space-y-3">
               {Object.keys(payments).map((method) => (
                 <label key={method} className="flex items-center gap-3">
-                  <input 
-                    type="checkbox" 
-                    checked={payments[method]} 
-                    onChange={(e) => setPayments({...payments, [method]: e.target.checked})}
+                  <input
+                    type="checkbox"
+                    checked={payments[method]}
+                    onChange={(e) => setPayments({ ...payments, [method]: e.target.checked })}
                     className="w-4 h-4 text-amber-600 rounded focus:ring-amber-500"
                   />
                   <span className="capitalize">
@@ -180,7 +179,7 @@ export default function SettingsClient({ initialSettings, envSettings: _env, aud
             <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg">
               <h3 className="font-medium text-amber-800 mb-1">🔒 Source of Truth Enforcement</h3>
               <p className="text-sm text-amber-700 leading-relaxed">
-                For security reasons, API keys and secrets are <strong>never stored in the database</strong> and cannot be modified via this UI. 
+                For security reasons, API keys and secrets are <strong>never stored in the database</strong> and cannot be modified via this UI.
                 They must be configured in your environment variables (<code>.env.local</code> or hosting provider).
               </p>
             </div>
@@ -219,10 +218,10 @@ export default function SettingsClient({ initialSettings, envSettings: _env, aud
                 </tbody>
               </table>
             </div>
-            
+
             <div className="mt-4">
-               <button 
-                onClick={() => alert("Test notification logic goes here.")} 
+              <button
+                onClick={() => alert("Test notification logic goes here.")}
                 className="btn-secondary"
                 disabled={!envSettings.resendApiKeyExists}
               >
@@ -236,10 +235,10 @@ export default function SettingsClient({ initialSettings, envSettings: _env, aud
         {activeTab === "audit" && (
           <div>
             <div className="flex items-center justify-between mb-4">
-               <h3 className="font-medium text-gray-900">Version History &amp; Audit Log</h3>
-               <span className="text-xs text-gray-500">Last 50 changes</span>
+              <h3 className="font-medium text-gray-900">Version History &amp; Audit Log</h3>
+              <span className="text-xs text-gray-500">Last 50 changes</span>
             </div>
-            
+
             {auditLogs && auditLogs.length > 0 ? (
               <div className="border rounded-lg overflow-hidden">
                 <table className="min-w-full divide-y divide-gray-200 text-left">
@@ -262,7 +261,7 @@ export default function SettingsClient({ initialSettings, envSettings: _env, aud
                         </td>
                         <td className="px-4 py-3 text-xs text-gray-700">{log.profiles?.full_name || "Unknown"}</td>
                         <td className="px-4 py-3">
-                          <button 
+                          <button
                             onClick={() => handleRollback(log.id)}
                             disabled={isPending}
                             className="text-amber-600 hover:text-amber-800 text-xs font-medium"

@@ -206,14 +206,13 @@ export default function LoginPage() {
           </div>
 
           <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-neutral-100 mx-4 sm:mx-0">
-            <div className="mb-6 text-center text-sm text-neutral-500">
-              {loginMode === "barista"
-                ? "Access the barista queue and prep dashboard."
-                : "Access the system settings and management toolkit."}
-              <br /><br />
-              <span className="text-amber-600 font-medium bg-amber-50 px-2 py-1 rounded">
-                Demo Credentials: {loginMode === "barista" ? "barista@zencafe.local" : "admin@zencafe.local"} / admin123
-              </span>
+            <div className="mb-8 flex flex-row items-center justify-center gap-4">
+              <div className={`p-3 rounded-2xl shadow-inner border ${loginMode === "barista" ? "bg-amber-50/50 border-amber-100/50 text-amber-600" : "bg-emerald-50/50 border-emerald-100/50 text-emerald-600"}`}>
+                {loginMode === "barista" ? <Coffee className="w-7 h-7 stroke-[2.5]" /> : <BarChart3 className="w-7 h-7 stroke-[2.5]" />}
+              </div>
+              <h3 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
+                {loginMode === "barista" ? "Welcome Barista" : "Welcome Admin"}
+              </h3>
             </div>
 
             <form className="space-y-6" onSubmit={handleLogin}>

@@ -465,6 +465,15 @@ export default function CafePage() {
         <OrderSnapshot onCapture={(blob) => finalSubmit(blob)} onSkip={() => finalSubmit(null)} />
       )}
 
+      {/* Submitting Overlay */}
+      {status === "submitting" && (
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white/90 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-16 h-16 border-4 border-amber-100 border-t-amber-500 rounded-full animate-spin mb-6 shadow-sm"></div>
+          <h3 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight mb-2 text-center px-4">Processing your order...</h3>
+          <p className="text-gray-500 font-medium text-center px-4">Please wait while we securely post your transaction.</p>
+        </div>
+      )}
+
       {/* Success */}
       {status === "success" && (
         <div className="mt-6 p-10 rounded-2xl bg-emerald-50 border border-emerald-200 text-center animate-slide-in max-w-2xl mx-auto shadow-sm">

@@ -11,6 +11,28 @@ type MovementReason = "restock" | "adjustment" | "spoilage";
 
 const PAGE_SIZE = 20;
 
+const NoteCell = ({ text, onOpenModal }: { text: string, onOpenModal: (text: string) => void }) => {
+  if (!text) return <span className="italic text-gray-400">—</span>;
+  
+  if (text.length <= 40) {
+    return <span className="italic text-gray-500">{text}</span>;
+  }
+  
+  return (
+    <div className="flex flex-col items-start gap-1">
+      <span className="italic text-gray-500 break-words w-full whitespace-normal">
+        {text.slice(0, 40)}...
+      </span>
+      <button 
+        onClick={() => onOpenModal(text)} 
+        className="text-[10px] uppercase font-bold text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 px-1.5 py-0.5 rounded transition-colors"
+      >
+        View More
+      </button>
+    </div>
+  );
+};
+
 export default function StockPage() {
   const [retailProducts, setRetailProducts] = useState<(Product & { retail_stock: RetailStock | null })[]>([]);
   const [filteredRetailProducts, setFilteredRetailProducts] = useState<(Product & { retail_stock: RetailStock | null })[]>([]);
@@ -45,6 +67,7 @@ export default function StockPage() {
     reason: MovementReason;
     notes: string;
   } | null>(null);
+  const [noteModal, setNoteModal] = useState<string | null>(null);
 
   useEffect(() => { load(); }, []);
   useEffect(() => { loadMovements(); }, [page]);
@@ -76,19 +99,19 @@ export default function StockPage() {
   }, [ingredients, ingredientSearchTerm, ingredientFilterStatus]);
   useEffect(() => {
     const filtered = movements.filter(movement => {
-      const itemName = retailProducts.find(p => p.id === movement.item_id)?.name 
-                    || ingredients.find(i => i.id === movement.item_id)?.name
-                    || "";
+      const itemName = retailProducts.find(p => p.id === movement.item_id)?.name
+        || ingredients.find(i => i.id === movement.item_id)?.name
+        || "";
       const performedBy = profileMap[movement.performed_by || ""] || "";
       const notes = movement.notes || "";
-      
+
       const matchesSearch = itemName.toLowerCase().includes(auditSearchTerm.toLowerCase()) ||
-             performedBy.toLowerCase().includes(auditSearchTerm.toLowerCase()) ||
-             notes.toLowerCase().includes(auditSearchTerm.toLowerCase()) ||
-             movement.movement_type.toLowerCase().includes(auditSearchTerm.toLowerCase());
-             
+        performedBy.toLowerCase().includes(auditSearchTerm.toLowerCase()) ||
+        notes.toLowerCase().includes(auditSearchTerm.toLowerCase()) ||
+        movement.movement_type.toLowerCase().includes(auditSearchTerm.toLowerCase());
+
       const matchesType = auditTypeFilter === "all" || movement.movement_type.toLowerCase() === auditTypeFilter.toLowerCase();
-      
+
       return matchesSearch && matchesType;
     });
     setFilteredMovements(filtered);
@@ -97,7 +120,7 @@ export default function StockPage() {
   async function load() {
     try {
       const supabase = createClient();
-      
+
       // Get total counts first
       const [{ count: retailCount }, { count: ingredientCount }] = await Promise.all([
         supabase.from("products").select("*", { count: "exact", head: true }).eq("type", "retail").eq("active", true),
@@ -213,35 +236,47 @@ export default function StockPage() {
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2"><Package className="w-5 h-5 text-blue-600" /> Retail Items</h2>
         <div className="flex items-center gap-4">
-          <select
-            value={retailFilterStatus}
-            onChange={(e) => setRetailFilterStatus(e.target.value)}
-            className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
-          >
-            <option value="all">All Status</option>
-            <option value="low">Low Stock</option>
-            <option value="out">Out of Stock</option>
-            <option value="ok">OK Stock</option>
-          </select>
-          <input
-            type="text"
-            placeholder="Search retail items..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 w-64"
-          />
+          <div className="relative inline-flex items-center group">
+            <select
+              value={retailFilterStatus}
+              onChange={(e) => setRetailFilterStatus(e.target.value)}
+              className="appearance-none bg-white border border-gray-200 text-gray-700 text-sm font-normal rounded-lg focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 block w-full pl-3 pr-8 py-1.5 shadow-sm hover:bg-gray-50 hover:border-gray-300 cursor-pointer transition-all"
+            >
+              <option value="all">All Status</option>
+              <option value="low">Low Stock</option>
+              <option value="out">Out of Stock</option>
+              <option value="ok">OK Stock</option>
+            </select>
+            <div className="absolute right-2.5 pointer-events-none text-gray-400 group-hover:text-gray-600 transition-colors">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" /></svg>
+            </div>
+          </div>
+          <div className="relative group w-64">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-hover:text-gray-500 transition-colors pointer-events-none">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </span>
+            <input
+              type="text"
+              placeholder="Search retail items..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 pr-3 py-1.5 text-sm w-full bg-white border border-gray-200 rounded-lg shadow-sm hover:border-gray-300 focus:outline-none focus:ring-4 focus:ring-gray-100 focus:border-gray-400 transition-all"
+            />
+          </div>
           <span className="text-xs text-gray-500 uppercase tracking-wider">
             {totalRetailProducts > 0 ? `${retailProductPage * PAGE_SIZE + 1}-${Math.min((retailProductPage + 1) * PAGE_SIZE, totalRetailProducts)} of ${totalRetailProducts}` : "No items"}
           </span>
           <div className="flex gap-1">
-            <button 
+            <button
               onClick={() => setRetailProductPage(p => Math.max(0, p - 1))}
               disabled={retailProductPage === 0}
               className="px-2 py-1 rounded bg-white border text-xs shadow-sm hover:bg-gray-50 disabled:opacity-40"
             >
               ← Prev
             </button>
-            <button 
+            <button
               onClick={() => setRetailProductPage(p => p + 1)}
               disabled={(retailProductPage + 1) * PAGE_SIZE >= totalRetailProducts}
               className="px-2 py-1 rounded bg-white border text-xs shadow-sm hover:bg-gray-50 disabled:opacity-40"
@@ -281,9 +316,8 @@ export default function StockPage() {
                     <td className="py-3 px-4 text-right font-medium">{stock}</td>
                     <td className="py-3 px-4 text-right text-gray-500">{threshold}</td>
                     <td className="py-3 px-4 text-center">
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                        isOut ? "bg-red-50 text-red-700" : isLow ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"
-                      }`}>
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${isOut ? "bg-red-50 text-red-700" : isLow ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"
+                        }`}>
                         {isOut ? "Out" : isLow ? "Low" : "OK"}
                       </span>
                     </td>
@@ -296,11 +330,10 @@ export default function StockPage() {
                               type: "product", id: p.id, name: p.name,
                               currentStock: stock, newStock: "", reason, notes: "",
                             })}
-                            className={`text-xs font-medium px-2 py-1 rounded ${
-                              reason === "restock" ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100" :
-                              reason === "spoilage" ? "bg-red-50 text-red-700 hover:bg-red-100" :
-                              "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                            }`}
+                            className={`text-xs font-medium px-2 py-1 rounded ${reason === "restock" ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100" :
+                                reason === "spoilage" ? "bg-red-50 text-red-700 hover:bg-red-100" :
+                                  "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                              }`}
                           >
                             {reason.charAt(0).toUpperCase() + reason.slice(1)}
                           </button>
@@ -319,35 +352,47 @@ export default function StockPage() {
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2"><FlaskConical className="w-5 h-5 text-emerald-600" /> Ingredients</h2>
         <div className="flex items-center gap-4">
-          <select
-            value={ingredientFilterStatus}
-            onChange={(e) => setIngredientFilterStatus(e.target.value)}
-            className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
-          >
-            <option value="all">All Status</option>
-            <option value="low">Low Stock</option>
-            <option value="out">Out of Stock</option>
-            <option value="ok">OK Stock</option>
-          </select>
-          <input
-            type="text"
-            placeholder="Search ingredients..."
-            value={ingredientSearchTerm}
-            onChange={(e) => setIngredientSearchTerm(e.target.value)}
-            className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 w-64"
-          />
+          <div className="relative inline-flex items-center group">
+            <select
+              value={ingredientFilterStatus}
+              onChange={(e) => setIngredientFilterStatus(e.target.value)}
+              className="appearance-none bg-white border border-gray-200 text-gray-700 text-sm font-normal rounded-lg focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 block w-full pl-3 pr-8 py-1.5 shadow-sm hover:bg-gray-50 hover:border-gray-300 cursor-pointer transition-all"
+            >
+              <option value="all">All Status</option>
+              <option value="low">Low Stock</option>
+              <option value="out">Out of Stock</option>
+              <option value="ok">OK Stock</option>
+            </select>
+            <div className="absolute right-2.5 pointer-events-none text-gray-400 group-hover:text-gray-600 transition-colors">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" /></svg>
+            </div>
+          </div>
+          <div className="relative group w-64">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-hover:text-gray-500 transition-colors pointer-events-none">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </span>
+            <input
+              type="text"
+              placeholder="Search ingredients..."
+              value={ingredientSearchTerm}
+              onChange={(e) => setIngredientSearchTerm(e.target.value)}
+              className="pl-9 pr-3 py-1.5 text-sm w-full bg-white border border-gray-200 rounded-lg shadow-sm hover:border-gray-300 focus:outline-none focus:ring-4 focus:ring-gray-100 focus:border-gray-400 transition-all"
+            />
+          </div>
           <span className="text-xs text-gray-500 uppercase tracking-wider">
             {totalIngredients > 0 ? `${ingredientPage * PAGE_SIZE + 1}-${Math.min((ingredientPage + 1) * PAGE_SIZE, totalIngredients)} of ${totalIngredients}` : "No ingredients"}
           </span>
           <div className="flex gap-1">
-            <button 
+            <button
               onClick={() => setIngredientPage(p => Math.max(0, p - 1))}
               disabled={ingredientPage === 0}
               className="px-2 py-1 rounded bg-white border text-xs shadow-sm hover:bg-gray-50 disabled:opacity-40"
             >
               ← Prev
             </button>
-            <button 
+            <button
               onClick={() => setIngredientPage(p => p + 1)}
               disabled={(ingredientPage + 1) * PAGE_SIZE >= totalIngredients}
               className="px-2 py-1 rounded bg-white border text-xs shadow-sm hover:bg-gray-50 disabled:opacity-40"
@@ -387,9 +432,8 @@ export default function StockPage() {
                     <td className="py-3 px-4 text-right font-medium">{Number(i.stock).toLocaleString()}</td>
                     <td className="py-3 px-4 text-right text-gray-500">{Number(i.low_stock_threshold).toLocaleString()}</td>
                     <td className="py-3 px-4 text-center">
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                        isOut ? "bg-red-50 text-red-700" : isLow ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"
-                      }`}>
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${isOut ? "bg-red-50 text-red-700" : isLow ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"
+                        }`}>
                         {isOut ? "Out" : isLow ? "Low" : "OK"}
                       </span>
                     </td>
@@ -402,11 +446,10 @@ export default function StockPage() {
                               type: "ingredient", id: i.id, name: i.name,
                               currentStock: i.stock, newStock: "", reason, notes: "",
                             })}
-                            className={`text-xs font-medium px-2 py-1 rounded ${
-                              reason === "restock" ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100" :
-                              reason === "spoilage" ? "bg-red-50 text-red-700 hover:bg-red-100" :
-                              "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                            }`}
+                            className={`text-xs font-medium px-2 py-1 rounded ${reason === "restock" ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100" :
+                                reason === "spoilage" ? "bg-red-50 text-red-700 hover:bg-red-100" :
+                                  "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                              }`}
                           >
                             {reason.charAt(0).toUpperCase() + reason.slice(1)}
                           </button>
@@ -426,36 +469,48 @@ export default function StockPage() {
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2"><Scroll className="w-5 h-5 text-amber-600" /> Stock Audit History</h2>
           <div className="flex items-center gap-4">
-            <select
-              value={auditTypeFilter}
-              onChange={(e) => setAuditTypeFilter(e.target.value)}
-              className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
-            >
-              <option value="all">All Types</option>
-              <option value="sale">Sale</option>
-              <option value="restock">Restock</option>
-              <option value="adjustment">Adjustment</option>
-              <option value="spoilage">Spoilage</option>
-            </select>
-            <input
-              type="text"
-              placeholder="Search audit history..."
-              value={auditSearchTerm}
-              onChange={(e) => setAuditSearchTerm(e.target.value)}
-              className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 w-64"
-            />
+            <div className="relative inline-flex items-center group">
+              <select
+                value={auditTypeFilter}
+                onChange={(e) => setAuditTypeFilter(e.target.value)}
+                className="appearance-none bg-white border border-gray-200 text-gray-700 text-sm font-normal rounded-lg focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 block w-full pl-3 pr-8 py-1.5 shadow-sm hover:bg-gray-50 hover:border-gray-300 cursor-pointer transition-all"
+              >
+                <option value="all">All Types</option>
+                <option value="sale">Sale</option>
+                <option value="restock">Restock</option>
+                <option value="adjustment">Adjustment</option>
+                <option value="spoilage">Spoilage</option>
+              </select>
+              <div className="absolute right-2.5 pointer-events-none text-gray-400 group-hover:text-gray-600 transition-colors">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" /></svg>
+              </div>
+            </div>
+            <div className="relative group w-64">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-hover:text-gray-500 transition-colors pointer-events-none">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </span>
+              <input
+                type="text"
+                placeholder="Search audit history..."
+                value={auditSearchTerm}
+                onChange={(e) => setAuditSearchTerm(e.target.value)}
+                className="pl-9 pr-3 py-1.5 text-sm w-full bg-white border border-gray-200 rounded-lg shadow-sm hover:border-gray-300 focus:outline-none focus:ring-4 focus:ring-gray-100 focus:border-gray-400 transition-all"
+              />
+            </div>
             <span className="text-xs text-gray-500 uppercase tracking-wider">
               {totalMovements > 0 ? `${page * 10 + 1}-${Math.min((page + 1) * 10, totalMovements)} of ${totalMovements}` : "No movements"}
             </span>
             <div className="flex gap-1">
-              <button 
+              <button
                 onClick={() => setPage(p => Math.max(0, p - 1))}
                 disabled={page === 0}
                 className="px-2 py-1 rounded bg-white border text-xs shadow-sm hover:bg-gray-50 disabled:opacity-40"
               >
                 ← Prev
               </button>
-              <button 
+              <button
                 onClick={() => setPage(p => p + 1)}
                 disabled={(page + 1) * 10 >= totalMovements}
                 className="px-2 py-1 rounded bg-white border text-xs shadow-sm hover:bg-gray-50 disabled:opacity-40"
@@ -487,10 +542,10 @@ export default function StockPage() {
                   </tr>
                 ) : (
                   filteredMovements.map((move) => {
-                    const itemName = retailProducts.find(p => p.id === move.item_id)?.name 
-                              || ingredients.find(i => i.id === move.item_id)?.name
-                              || "Unknown Item";
-                    
+                    const itemName = retailProducts.find(p => p.id === move.item_id)?.name
+                      || ingredients.find(i => i.id === move.item_id)?.name
+                      || "Unknown Item";
+
                     const delta = move.quantity_delta;
 
                     return (
@@ -505,11 +560,10 @@ export default function StockPage() {
                           )}
                         </td>
                         <td className="py-3 px-4 text-center">
-                          <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${
-                            move.movement_type === "restock" ? "bg-emerald-50 text-emerald-700" :
-                            move.movement_type === "spoilage" ? "bg-red-50 text-red-700" :
-                            "bg-gray-100 text-gray-600"
-                          }`}>
+                          <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${move.movement_type === "restock" ? "bg-emerald-50 text-emerald-700" :
+                              move.movement_type === "spoilage" ? "bg-red-50 text-red-700" :
+                                "bg-gray-100 text-gray-600"
+                            }`}>
                             {move.movement_type}
                           </span>
                         </td>
@@ -519,10 +573,10 @@ export default function StockPage() {
                           </span>
                         </td>
                         <td className="py-3 px-4 text-xs text-gray-600">
-                          {move.performed_by ? (profileMap[move.performed_by] || "Admin") : "Admin"}
+                          {move.movement_type === "sale" ? "Customer" : (move.performed_by ? (profileMap[move.performed_by] || "Admin") : "Admin")}
                         </td>
-                        <td className="py-3 px-4 text-gray-500 truncate italic max-w-[200px]" title={move.notes || ""}>
-                          {move.notes || "—"}
+                        <td className="py-3 px-4 max-w-[200px]">
+                          <NoteCell text={move.notes || ""} onOpenModal={setNoteModal} />
                         </td>
                       </tr>
                     );
@@ -582,6 +636,29 @@ export default function StockPage() {
                 {isPending ? "Saving..." : "Update Stock"}
               </button>
               <button onClick={() => setModal(null)} className="btn-secondary text-sm">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Note Modal */}
+      {noteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm px-4">
+          <div className="card p-6 w-full max-w-md mx-4 animate-slide-in">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Audit Note
+              </h3>
+              <button 
+                onClick={() => setNoteModal(null)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
+            </div>
+            
+            <div className="bg-gray-50 border border-gray-100 rounded-lg p-4 text-sm text-gray-700 leading-relaxed max-h-[60vh] overflow-y-auto whitespace-pre-wrap">
+              {noteModal}
             </div>
           </div>
         </div>
