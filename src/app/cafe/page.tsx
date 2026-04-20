@@ -336,7 +336,7 @@ export default function CafePage() {
               <div className="pt-4 border-t border-gray-200 flex flex-col gap-4">
                 <div className="flex items-center justify-between">
                   <span className="text-lg md:text-xl font-bold text-gray-900">Total Selection</span>
-                  <span className="text-2xl md:text-3xl font-black text-amber-600">{formatCurrency(totalPrice)}</span>
+                  <span className="text-2xl md:text-3xl font-bold text-amber-600">{formatCurrency(totalPrice)}</span>
                 </div>
 
                 <div className="bg-gray-50/80 p-4 rounded-2xl border border-gray-200/60 shadow-sm transition-all duration-300 hover:shadow-md">
@@ -436,7 +436,7 @@ export default function CafePage() {
 
             <div className="text-center">
               <p className="text-xs text-gray-500 font-medium leading-none mb-1">Scan & pay exactly</p>
-              <p className="text-2xl md:text-3xl font-black text-blue-700 tabular-nums leading-none">{formatCurrency(totalPrice)}</p>
+              <p className="text-2xl md:text-3xl font-bold text-blue-700 tabular-nums leading-none">{formatCurrency(totalPrice)}</p>
             </div>
 
             <button

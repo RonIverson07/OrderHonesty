@@ -5,11 +5,12 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 
-import { Ticket, BarChart3, Package, FlaskConical, ClipboardList, Inbox, Receipt, Users, Settings } from "lucide-react";
+import { Ticket, BarChart3, Package, FlaskConical, ClipboardList, Inbox, Receipt, Users, Settings, History } from "lucide-react";
 
 const adminLinks = [
   { href: "/barista", label: "Order Queue", icon: <Ticket className="w-5 h-5 text-gray-500" />, exact: false },
   { href: "/dashboard", label: "Overview", icon: <BarChart3 className="w-5 h-5 text-indigo-500" />, exact: true },
+  { href: "/dashboard/history", label: "Order History", icon: <History className="w-5 h-5 text-teal-600" />, exact: false },
   { href: "/dashboard/products", label: "Products", icon: <Package className="w-5 h-5 text-amber-600" />, exact: false },
   { href: "/dashboard/ingredients", label: "Ingredients", icon: <FlaskConical className="w-5 h-5 text-emerald-500" />, exact: false },
   { href: "/dashboard/recipes", label: "Recipes", icon: <ClipboardList className="w-5 h-5 text-blue-500" />, exact: false },

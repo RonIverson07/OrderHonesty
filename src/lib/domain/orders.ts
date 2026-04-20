@@ -817,3 +817,34 @@ export async function adminDeleteIngredient(id: string): Promise<{ success: bool
     return { success: false, error: err.message || "Error" };
   }
 }
+
+// ---- Admin: Delete Order ----
+export async function adminDeleteOrder(orderId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    await requireRole("admin");
+    const supabase = await createClient();
+    
+    // First safely delete any linked inventory movements
+    await supabase.from("inventory_movements").delete().eq("reference_order_id", orderId);
+    
+    // First safely delete order items
+    await supabase.from("order_items").delete().eq("order_id", orderId);
+    
+    // Then delete the actual order record
+    const { error } = await supabase.from("orders").delete().eq("id", orderId);
+    
+    if (error) {
+       console.error("[Delete Order] foreign key or db error:", error);
+       throw error;
+    }
+    
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/history");
+    revalidatePath("/dashboard/reconciliation");
+    
+    return { success: true };
+  } catch (err: any) {
+    console.error("[Admin] Delete order failed:", err);
+    return { success: false, error: err.message || "Error" };
+  }
+}

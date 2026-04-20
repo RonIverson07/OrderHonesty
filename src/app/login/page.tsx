@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/browser";
 import Link from "next/link";
 import { Coffee, BarChart3, X, AlertCircle } from "lucide-react";
+import { processAdminPasswordRecovery } from "@/lib/domain/notifications";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -15,6 +16,7 @@ export default function LoginPage() {
   const [toastVisible, setToastVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [forgotLoading, setForgotLoading] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showToast = (message: string) => {
@@ -119,6 +121,27 @@ export default function LoginPage() {
       showToast(err.message || "An unexpected error occurred.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      showToast("Please enter your admin email address first so we know who is requesting.");
+      return;
+    }
+    
+    setForgotLoading(true);
+    try {
+      const res = await processAdminPasswordRecovery(email);
+      if (res.success) {
+        alert("A temporary secure password has been generated and directly emailed to the Master Admin (Ron Iverson). Please wait a moment for the email to arrive.");
+      } else {
+        showToast("Failed to send request. Server may be busy.");
+      }
+    } catch (err) {
+      showToast("An error occurred while sending the request.");
+    } finally {
+      setForgotLoading(false);
     }
   };
 
@@ -235,9 +258,21 @@ export default function LoginPage() {
               </div>
 
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-neutral-700">
-                  Password
-                </label>
+                <div className="flex items-center justify-between">
+                  <label htmlFor="password" className="block text-sm font-medium text-neutral-700">
+                    Password
+                  </label>
+                  {loginMode === "admin" && (
+                    <button 
+                      type="button" 
+                      onClick={handleForgotPassword}
+                      disabled={loading || forgotLoading}
+                      className="text-sm font-medium text-amber-600 hover:text-amber-500 focus:outline-none transition-colors disabled:opacity-50"
+                    >
+                      {forgotLoading ? "Sending..." : "Forgot password?"}
+                    </button>
+                  )}
+                </div>
                 <div className="mt-1">
                   <input
                     id="password"

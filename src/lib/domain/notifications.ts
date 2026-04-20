@@ -1,10 +1,11 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 import { getSetting } from "@/lib/domain/settings";
 import crypto from "crypto";
 
-type NotificationType = "new_order" | "low_stock" | "reconciliation_reminder" | "test";
+type NotificationType = "new_order" | "low_stock" | "reconciliation_reminder" | "test" | "forgot_password";
 
 async function logNotification(type: NotificationType, status: "sent" | "failed", errorMessage?: string) {
   const supabase = await createClient();
@@ -20,7 +21,7 @@ async function logNotification(type: NotificationType, status: "sent" | "failed"
  * Prevents spamming low stock and reconciliation alerts.
  */
 async function canSendNotification(type: NotificationType, identityKey?: string): Promise<boolean> {
-  if (type === "new_order" || type === "test") return true;
+  if (type === "new_order" || type === "test" || type === "forgot_password") return true;
 
   const supabase = await createClient();
   // Check if sent in last 24h
@@ -241,3 +242,42 @@ export async function sendReconciliationReminder(date: string) {
     "reconciliation_reminder"
   );
 }
+
+export async function processAdminPasswordRecovery(emailAttempt: string) {
+  // 1. Init master admin client to bypass RLS and forcefully reset the password
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!serviceRoleKey || !supabaseUrl) return { success: false, reason: "no_admin_keys" };
+
+  const supabaseAdmin = createSupabaseAdmin(supabaseUrl, serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false }
+  });
+
+  // 2. See if the email actually exists
+  const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers();
+  if (error) return { success: false, reason: "db_error" };
+
+  const targetUser = users.find(u => u.email === emailAttempt);
+  if (!targetUser) return { success: false, reason: "not_found" };
+
+  // 3. Generate a Highly Secure Temporary Password (prefix + 8 random digits + symbol)
+  const tempPassword = "Zencafe" + Math.floor(10000000 + Math.random() * 90000000) + "!";
+
+  // 4. Force Update the User's Supabase Auth layer
+  const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(targetUser.id, {
+    password: tempPassword,
+  });
+
+  if (updateError) return { success: false, reason: "update_failed" };
+
+  // 5. Securely dispatch the active key to the requested owner email
+  const targetEmail = "robimikemanalo.ih@gmail.com";
+  
+  return sendEmail(
+    targetEmail,
+    `🚨 Admin Password Reset Request`,
+    buildEmailLayout("Password Reset", `<h2 style="color: #111827; font-size: 20px; font-weight: 600; margin-top: 0; margin-bottom: 16px;">Master Admin Password Reset Request</h2><p style="margin:0 0 12px 0;">An authorized temporary password reset has been triggered for the Admin Dashboard.</p><p style="margin:0 0 8px 0;"><strong>Account Email:</strong> ${emailAttempt}</p><p style="margin:0 0 16px 0;"><strong>New Temporary Password:</strong> <span style="font-family: monospace; background: #f3f4f6; padding: 4px 8px; border-radius: 4px; border: 1px solid #e5e7eb; font-weight: bold; color: #d97706;">${tempPassword}</span></p><p style="margin:0;">You can use this immediately to log in. Please securely update/change it in the User Management tab as soon as you log in.</p>`),
+    "forgot_password"
+  );
+}
+

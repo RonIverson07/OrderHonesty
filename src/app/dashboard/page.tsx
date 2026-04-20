@@ -24,6 +24,12 @@ const GHOST_STATS = {
 };
 
 export default function DashboardPage() {
+  const getTodayStr = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
+  const [selectedDateStr, setSelectedDateStr] = useState(getTodayStr());
   const [stats, setStats] = useState(GHOST_STATS);
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [lowStockRetail, setLowStockRetail] = useState<any[]>([]);
@@ -48,15 +54,18 @@ export default function DashboardPage() {
         const isActuallyDemo = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes("demo");
         setIsDemo(isActuallyDemo);
 
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        const startOfDay = new Date(selectedDateStr);
+        startOfDay.setHours(0, 0, 0, 0);
+
+        const endOfDay = new Date(selectedDateStr);
+        endOfDay.setHours(23, 59, 59, 999);
 
         const { data: ordersData, error: ordersError } = await supabase
           .from("orders")
           .select("*, order_items(*, products!product_id(*))")
-          .gte("created_at", today.toISOString())
-          .order("created_at", { ascending: false })
-          .limit(50);
+          .gte("created_at", startOfDay.toISOString())
+          .lte("created_at", endOfDay.toISOString())
+          .order("created_at", { ascending: false });
 
         if (ordersError) {
           console.error("Dashboard Load Error:", ordersError);
@@ -133,7 +142,7 @@ export default function DashboardPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [selectedDateStr, isDemo]);
 
   const handleConfirmPayment = (orderId: string) => {
     startTransition(async () => {
@@ -287,12 +296,15 @@ export default function DashboardPage() {
     }
   };
 
+  const isToday = selectedDateStr === getTodayStr();
+  const dateLabel = isToday ? "Today" : selectedDateStr;
+
   return (
     <div>
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-sm text-gray-500">Today&apos;s overview</p>
+          <p className="text-sm text-gray-500">Overview for {dateLabel}</p>
           {isDemo && (
             <div className="mt-2 p-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-xs inline-flex items-center gap-1">
               <Zap className="w-3 h-3" /> Demo mode
@@ -300,17 +312,26 @@ export default function DashboardPage() {
           )}
         </div>
 
-        <div className="relative inline-block text-left">
-          <button
-            type="button"
-            onClick={() => setExportMenuOpen(!exportMenuOpen)}
-            disabled={loading}
-            className="group inline-flex items-center gap-2 justify-center w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 transition-all disabled:opacity-50"
-          >
-            <Download className="w-4 h-4 text-gray-500 group-hover:text-amber-600 transition-colors" />
-            Export CSV...
-            <svg className={`w-4 h-4 text-gray-400 transition-transform ${exportMenuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" /></svg>
-          </button>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <input
+            type="date"
+            value={selectedDateStr}
+            max={getTodayStr()}
+            onChange={(e) => setSelectedDateStr(e.target.value)}
+            className="w-full sm:w-[160px] h-[42px] box-border rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 transition-all cursor-pointer"
+          />
+
+          <div className="relative inline-block text-left">
+            <button
+              type="button"
+              onClick={() => setExportMenuOpen(!exportMenuOpen)}
+              disabled={loading}
+              className="group inline-flex items-center gap-2 justify-center w-full sm:w-[160px] h-[42px] box-border rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 transition-all disabled:opacity-50"
+            >
+              <Download className="w-4 h-4 text-gray-500 group-hover:text-amber-600 transition-colors shrink-0" />
+              <span className="whitespace-nowrap">Export CSV</span>
+              <svg className={`w-4 h-4 text-gray-400 transition-transform ${exportMenuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" /></svg>
+            </button>
 
           {exportMenuOpen && (
             <>
@@ -347,6 +368,7 @@ export default function DashboardPage() {
             </div>
             </>
           )}
+        </div>
         </div>
       </div>
 
@@ -428,17 +450,17 @@ export default function DashboardPage() {
 
           {/* Stats Row 1 */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-            <SummaryCard icon={<Package className="w-6 h-6 text-amber-500" />} title="Total Orders" value={stats.totalOrders.toString()} subtitle={`${stats.cafeOrders} café · ${stats.fridgeOrders} fridge`} trend="neutral" />
-            <SummaryCard icon={<DollarSign className="w-6 h-6 text-emerald-500" />} title="Revenue" value={formatCurrency(stats.totalRevenue)} trend="neutral" />
-            <SummaryCard icon={<TrendingDown className="w-6 h-6 text-red-400" />} title="COGS" value={formatCurrency(stats.totalCost)} trend="neutral" />
-            <SummaryCard icon={<TrendingUp className="w-6 h-6 text-blue-500" />} title="Margin" value={formatCurrency(stats.totalMargin)} subtitle={stats.totalRevenue > 0 ? `${((stats.totalMargin / stats.totalRevenue) * 100).toFixed(1)}%` : "—"} trend="neutral" />
+            <SummaryCard dateLabel={dateLabel} icon={<Package className="w-6 h-6 text-amber-500" />} title="Total Orders" value={stats.totalOrders.toString()} subtitle={`${stats.cafeOrders} café · ${stats.fridgeOrders} fridge`} trend="neutral" />
+            <SummaryCard dateLabel={dateLabel} icon={<DollarSign className="w-6 h-6 text-emerald-500" />} title="Revenue" value={formatCurrency(stats.totalRevenue)} trend="neutral" />
+            <SummaryCard dateLabel={dateLabel} icon={<TrendingDown className="w-6 h-6 text-red-400" />} title="COGS" value={formatCurrency(stats.totalCost)} trend="neutral" />
+            <SummaryCard dateLabel={dateLabel} icon={<TrendingUp className="w-6 h-6 text-blue-500" />} title="Margin" value={formatCurrency(stats.totalMargin)} subtitle={stats.totalRevenue > 0 ? `${((stats.totalMargin / stats.totalRevenue) * 100).toFixed(1)}%` : "—"} trend="neutral" />
           </div>
 
           {/* Stats Row 2: Reconciliation */}
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-            <SummaryCard icon={<Target className="w-6 h-6 text-purple-500" />} title="Expected Revenue" value={formatCurrency(stats.totalExpected)} trend="neutral" />
-            <SummaryCard icon={<CheckCircle2 className="w-6 h-6 text-emerald-500" />} title="Confirmed" value={formatCurrency(stats.totalConfirmed)} subtitle={`${stats.unconfirmedCount} unconfirmed`} trend="neutral" />
-            <SummaryCard icon={leakage > 0 ? <AlertTriangle className="w-6 h-6 text-amber-500" /> : <CheckCircle2 className="w-6 h-6 text-emerald-500" />} title="Unconfirmed Gap" value={formatCurrency(leakage)} subtitle={`${leakagePct}% of expected`} trend="neutral" />
+            <SummaryCard dateLabel={dateLabel} icon={<Target className="w-6 h-6 text-purple-500" />} title="Expected Revenue" value={formatCurrency(stats.totalExpected)} trend="neutral" />
+            <SummaryCard dateLabel={dateLabel} icon={<CheckCircle2 className="w-6 h-6 text-emerald-500" />} title="Confirmed" value={formatCurrency(stats.totalConfirmed)} subtitle={`${stats.unconfirmedCount} unconfirmed`} trend="neutral" />
+            <SummaryCard dateLabel={dateLabel} icon={leakage > 0 ? <AlertTriangle className="w-6 h-6 text-amber-500" /> : <CheckCircle2 className="w-6 h-6 text-emerald-500" />} title="Unconfirmed Gap" value={formatCurrency(leakage)} subtitle={`${leakagePct}% of expected`} trend="neutral" />
           </div>
 
           {/* Two-column: Orders + Alerts */}
@@ -485,7 +507,7 @@ export default function DashboardPage() {
                               {order.order_items.length > 1 && (
                                 <button
                                   onClick={() => setViewItemsOrder(order)}
-                                  className="text-[10px] uppercase tracking-wider font-semibold text-amber-600 hover:text-amber-800 transition-colors"
+                                  className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-2 py-1 mt-1 rounded text-amber-700 bg-amber-50 border border-amber-100 hover:bg-amber-100 hover:border-amber-200 transition-all shadow-sm"
                                 >
                                   View all ({order.order_items.length} items)
                                 </button>
@@ -518,7 +540,7 @@ export default function DashboardPage() {
                         );
                       })}
                       {orders.length === 0 && (
-                        <tr><td colSpan={6} className="py-8 text-center text-gray-400">No orders today</td></tr>
+                        <tr><td colSpan={6} className="py-8 text-center text-gray-400">No orders for {dateLabel}</td></tr>
                       )}
                     </tbody>
                   </table>

@@ -4,6 +4,7 @@ interface SummaryCardProps {
   subtitle?: string;
   icon: React.ReactNode;
   trend?: "up" | "down" | "neutral";
+  dateLabel?: string;
 }
 
 export default function SummaryCard({
@@ -12,6 +13,7 @@ export default function SummaryCard({
   subtitle,
   icon,
   trend,
+  dateLabel,
 }: SummaryCardProps) {
   return (
     <div className="card p-5 animate-slide-in">
@@ -27,7 +29,7 @@ export default function SummaryCard({
                 : "bg-gray-100 text-gray-500"
             }`}
           >
-            {trend === "up" ? "↑" : trend === "down" ? "↓" : "—"} Today
+            {trend === "up" ? "↑" : trend === "down" ? "↓" : "—"} {dateLabel || "Today"}
           </span>
         )}
       </div>

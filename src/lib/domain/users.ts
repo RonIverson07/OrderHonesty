@@ -92,10 +92,10 @@ export async function deleteStaffAccount(userIdToDelete: string) {
     auth: { autoRefreshToken: false, persistSession: false }
   });
 
-  // 1. Fetch current user to check their role (Admin protection)
+  // 1. Fetch target user to check their role and identity
   const { data: targetUser, error: fetchError } = await supabaseAdmin
     .from("profiles")
-    .select("role")
+    .select("role, email")
     .eq("id", userIdToDelete)
     .single();
 
@@ -103,21 +103,35 @@ export async function deleteStaffAccount(userIdToDelete: string) {
     return { success: false, error: "Account not found in Profiles." };
   }
 
-  if (targetUser.role === "admin") {
-    return { success: false, error: "Administrators cannot delete other administrators' accounts. Action blocked for safety." };
+  // Ensure the main admin can NEVER be deleted
+  if (targetUser.email === "desk@startuplab.ph") {
+    return { success: false, error: "The primary owner account (desk@startuplab.ph) can never be deleted." };
   }
 
-  // 2. Clear Auth account first
-  const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userIdToDelete);
-  if (authError) {
-    console.error("[deleteUserAuth]", authError);
-    return { success: false, error: "Failed to delete from authentication layer." };
+  // Fetch the current acting administrator's true email
+  const { data: adminAuthData } = await supabaseAdmin.auth.admin.getUserById(adminId);
+  const adminEmail = adminAuthData?.user?.email;
+
+  // Restore admin protections, but create an exception for the main owner
+  if (targetUser.role === "admin" && adminEmail !== "desk@startuplab.ph") {
+    return { success: false, error: "Only the main owner (desk@startuplab.ph) can delete other administrators." };
   }
 
-  // 3. Clear public Profile
+  // 1.5. Clear any constraints from business data so we can safely delete the user
+  await supabaseAdmin.from("orders").update({ confirmed_by: null }).eq("confirmed_by", userIdToDelete);
+  await supabaseAdmin.from("inventory_movements").update({ performed_by: null }).eq("performed_by", userIdToDelete);
+
+  // 2. Clear public Profile FIRST (to remove the foreign key reference holding back auth layer deletion)
   const { error: profileError } = await supabaseAdmin.from("profiles").delete().eq("id", userIdToDelete);
   if (profileError) {
     console.warn("[deleteUserProfile] Profiling record deletion failed or missing (ignoring):", profileError);
+  }
+
+  // 3. Clear Auth account last
+  const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userIdToDelete);
+  if (authError) {
+    console.error("[deleteUserAuth]", authError);
+    return { success: false, error: "Failed to delete from authentication layer: " + authError.message };
   }
 
   return { success: true };
@@ -160,4 +174,48 @@ export async function syncStaffEmails() {
     console.error("[syncStaffEmails]", err);
     return { success: false, error: err.message || "Failed to sync emails." };
   }
+}
+
+export async function changeStaffPassword(userId: string, newPassword: string) {
+  const adminProfile = await requireRole("admin");
+  const adminId = adminProfile.id;
+
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+  if (!serviceRoleKey || !supabaseUrl) {
+    return { success: false, error: "Configuration Error: Service role key missing." };
+  }
+
+  const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false }
+  });
+
+  // Fetch current user to check their role (Admin protection)
+  const { data: targetUser, error: fetchError } = await supabaseAdmin
+    .from("profiles")
+    .select("role")
+    .eq("id", userId)
+    .single();
+
+  if (fetchError || !targetUser) {
+    return { success: false, error: "Account not found in Profiles." };
+  }
+
+  // Admin cannot change other admins' passwords
+  if (targetUser.role === "admin" && userId !== adminId) {
+    return { success: false, error: "Administrators cannot change other administrators' passwords. Action blocked." };
+  }
+
+  // Update Auth account password
+  const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+    password: newPassword
+  });
+
+  if (authError) {
+    console.error("[updateUserPassword]", authError);
+    return { success: false, error: authError.message || "Failed to update password." };
+  }
+
+  return { success: true };
 }
