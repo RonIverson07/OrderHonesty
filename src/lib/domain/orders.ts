@@ -770,14 +770,13 @@ export async function adminDeleteProduct(id: string): Promise<{ success: boolean
     
     // 2. Delete from retail_stock
     await supabase.from("retail_stock").delete().eq("product_id", id);
+
+    // 2.5 Delete from order_items (to allow deleting dummy products that were part of tests)
+    await supabase.from("order_items").delete().eq("product_id", id);
     
     // 3. Delete the product
     const { error } = await supabase.from("products").delete().eq("id", id);
     if (error) {
-      // If it's a foreign key violation from order_items
-      if (error.code === "23503") {
-        throw new Error("Cannot delete this product because it has been ordered. Try deactivating it instead.");
-      }
       throw error;
     }
     
@@ -797,11 +796,16 @@ export async function adminDeleteIngredient(id: string): Promise<{ success: bool
   try {
     await requireRole("admin");
     const supabase = await createClient();
+
+    // 1. Delete associated recipes that use this ingredient
+    await supabase.from("recipes").delete().eq("ingredient_id", id);
+
+    // 2. Delete associated inventory logs
+    await supabase.from("inventory_movements").delete().eq("ingredient_id", id);
+
+    // 3. Delete the actual ingredient record
     const { error } = await supabase.from("ingredients").delete().eq("id", id);
     if (error) {
-      if (error.code === "23503") {
-        throw new Error("Cannot delete this ingredient because it is part of a recipe or order. Try updating its details instead.");
-      }
       throw error;
     }
     

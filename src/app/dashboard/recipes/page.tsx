@@ -21,6 +21,8 @@ export default function RecipesPage() {
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState("");
   const [productSearch, setProductSearch] = useState("");
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [rowToRemove, setRowToRemove] = useState<number | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -56,7 +58,17 @@ export default function RecipesPage() {
   };
 
   const addRow = () => setRecipes([...recipes, { ingredient_id: "", qty_required: 0 }]);
-  const removeRow = (idx: number) => setRecipes(recipes.filter((_, i) => i !== idx));
+  const removeRow = (idx: number) => {
+    setRowToRemove(idx);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmRemoveRow = () => {
+    if (rowToRemove === null) return;
+    setRecipes(recipes.filter((_, i) => i !== rowToRemove));
+    setIsDeleteDialogOpen(false);
+    setRowToRemove(null);
+  };
 
   const updateRow = (idx: number, field: keyof RecipeRow, value: string | number) => {
     setRecipes(recipes.map((r, i) => (i === idx ? { ...r, [field]: value } : r)));
@@ -276,6 +288,36 @@ export default function RecipesPage() {
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {isDeleteDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl border border-gray-100 animate-slide-in text-center">
+            <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mb-4 mx-auto">
+              <span className="text-2xl">⚠️</span>
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Remove Ingredient?</h3>
+            <p className="text-sm text-gray-600 mb-6">
+              Are you sure you want to remove this ingredient from the recipe? 
+              You will need to save the recipe to apply changes permanently.
+            </p>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => { setIsDeleteDialogOpen(false); setRowToRemove(null); }}
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-700 bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmRemoveRow}
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm font-bold text-white bg-red-600 hover:bg-red-700 shadow-lg shadow-red-200 transition-all"
+              >
+                Yes, Remove
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

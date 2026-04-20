@@ -16,6 +16,8 @@ export default function IngredientsPage() {
   const [message, setMessage] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<{ id: string, name: string } | null>(null);
 
   useEffect(() => { loadIngredients(); }, []);
 
@@ -50,9 +52,15 @@ export default function IngredientsPage() {
   };
 
   const handleDelete = (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to delete ${name}?`)) return;
+    setItemToDelete({ id, name });
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (!itemToDelete) return;
+    setIsDeleteDialogOpen(false);
     startTransition(async () => {
-      const result = await adminDeleteIngredient(id);
+      const result = await adminDeleteIngredient(itemToDelete.id);
       if (result.success) {
         setMessage("✅ Ingredient deleted");
         await loadIngredients();
@@ -60,6 +68,7 @@ export default function IngredientsPage() {
       } else {
         setMessage(`❌ ${result.error}`);
       }
+      setItemToDelete(null);
     });
   };
 
@@ -227,6 +236,36 @@ export default function IngredientsPage() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {isDeleteDialogOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl border border-gray-100 animate-slide-in">
+            <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mb-4">
+              <span className="text-2xl">⚠️</span>
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Ingredient?</h3>
+            <p className="text-sm text-gray-600 mb-6">
+              Are you sure you want to delete <span className="font-bold text-gray-900">"{itemToDelete?.name}"</span>? 
+              This action cannot be undone and may affect associated recipes.
+            </p>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => { setIsDeleteDialogOpen(false); setItemToDelete(null); }}
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-700 bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-all"
+              >
+                No, Keep
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm font-bold text-white bg-red-600 hover:bg-red-700 shadow-lg shadow-red-200 transition-all"
+              >
+                Yes, Delete
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

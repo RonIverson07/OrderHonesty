@@ -22,6 +22,8 @@ export default function UsersClient({ initialProfiles }: { initialProfiles: Prof
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [isUserDeleteDialogOpen, setIsUserDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<string | null>(null);
   const [showOldPassword, setShowOldPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -57,8 +59,14 @@ export default function UsersClient({ initialProfiles }: { initialProfiles: Prof
   }, []);
 
   const handleDelete = (userId: string) => {
-    if (!confirm("Are you sure you want to delete this staff account? This action cannot be undone.")) return;
+    setUserToDelete(userId);
+    setIsUserDeleteDialogOpen(true);
+  };
 
+  const confirmUserDelete = () => {
+    if (!userToDelete) return;
+    const userId = userToDelete;
+    setIsUserDeleteDialogOpen(false);
     setIsDeleting(userId);
     setError(null);
     setSuccess(null);
@@ -73,6 +81,7 @@ export default function UsersClient({ initialProfiles }: { initialProfiles: Prof
         setError(result.error || "Failed to delete account.");
       }
       setIsDeleting(null);
+      setUserToDelete(null);
     });
   };
 
@@ -136,6 +145,8 @@ export default function UsersClient({ initialProfiles }: { initialProfiles: Prof
       setIsChangingPassword(null);
     });
   };
+
+  const selectedUserEmail = profiles.find(p => p.id === userToDelete)?.email || "this user";
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -442,6 +453,36 @@ export default function UsersClient({ initialProfiles }: { initialProfiles: Prof
                   {isChangingPassword !== null ? "Saving..." : "Save Password"}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {isUserDeleteDialogOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm mx-4 shadow-2xl border border-gray-100 animate-slide-in text-center">
+            <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mb-4 mx-auto">
+              <span className="text-2xl">⚠️</span>
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Staff Account?</h3>
+            <p className="text-sm text-gray-600 mb-6">
+              Are you sure you want to delete <span className="font-bold text-gray-900">{selectedUserEmail}</span>? 
+              This action cannot be undone and will permanently remove their access.
+            </p>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => { setIsUserDeleteDialogOpen(false); setUserToDelete(null); }}
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-700 bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmUserDelete}
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm font-bold text-white bg-red-600 hover:bg-red-700 shadow-lg shadow-red-200 transition-all"
+              >
+                Yes, Delete
+              </button>
             </div>
           </div>
         </div>
