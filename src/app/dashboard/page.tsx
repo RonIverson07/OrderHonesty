@@ -30,8 +30,7 @@ export default function DashboardPage() {
   };
 
   const [selectedDateStr, setSelectedDateStr] = useState(getTodayStr());
-  const [selectedEndDateStr, setSelectedEndDateStr] = useState<string | null>(null);
-  const [isRangeMode, setIsRangeMode] = useState(false);
+  const [selectedEndDateStr, setSelectedEndDateStr] = useState(getTodayStr());
   const [stats, setStats] = useState(GHOST_STATS);
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [lowStockRetail, setLowStockRetail] = useState<any[]>([]);
@@ -59,7 +58,7 @@ export default function DashboardPage() {
         const startOfDay = new Date(selectedDateStr);
         startOfDay.setHours(0, 0, 0, 0);
 
-        const endOfDay = new Date(isRangeMode && selectedEndDateStr ? selectedEndDateStr : selectedDateStr);
+        const endOfDay = new Date(selectedEndDateStr || selectedDateStr);
         endOfDay.setHours(23, 59, 59, 999);
 
         const { data: ordersData, error: ordersError } = await supabase
@@ -144,7 +143,7 @@ export default function DashboardPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [selectedDateStr, selectedEndDateStr, isRangeMode, isDemo]);
+  }, [selectedDateStr, selectedEndDateStr, isDemo]);
 
   const handleConfirmPayment = (orderId: string) => {
     startTransition(async () => {
@@ -298,10 +297,10 @@ export default function DashboardPage() {
     }
   };
 
-  const isToday = !isRangeMode && selectedDateStr === getTodayStr();
-  const dateLabel = isRangeMode && selectedEndDateStr
-    ? `${selectedDateStr} to ${selectedEndDateStr}`
-    : (isToday ? "Today" : selectedDateStr);
+  const isToday = selectedDateStr === getTodayStr() && selectedEndDateStr === getTodayStr();
+  const dateLabel = selectedDateStr === selectedEndDateStr
+    ? (isToday ? "Today" : selectedDateStr)
+    : `${selectedDateStr} to ${selectedEndDateStr}`;
 
   return (
     <div>
@@ -317,16 +316,6 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 h-[42px] shadow-sm">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-tight">Range</span>
-            <button
-              onClick={() => setIsRangeMode(!isRangeMode)}
-              className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isRangeMode ? 'bg-amber-600' : 'bg-gray-200'}`}
-            >
-              <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isRangeMode ? 'translate-x-4' : 'translate-x-0'}`} />
-            </button>
-          </div>
-
           <div className="flex flex-col sm:flex-row items-center gap-2">
             <input
               type="date"
@@ -335,19 +324,15 @@ export default function DashboardPage() {
               onChange={(e) => setSelectedDateStr(e.target.value)}
               className="w-full sm:w-[150px] h-[42px] box-border rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 transition-all cursor-pointer"
             />
-            {isRangeMode && (
-              <>
-                <span className="text-gray-400 text-xs font-bold leading-none">TO</span>
-                <input
-                  type="date"
-                  value={selectedEndDateStr || ""}
-                  min={selectedDateStr}
-                  max={getTodayStr()}
-                  onChange={(e) => setSelectedEndDateStr(e.target.value)}
-                  className="w-full sm:w-[150px] h-[42px] box-border rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 transition-all cursor-pointer"
-                />
-              </>
-            )}
+            <span className="text-gray-400 text-xs font-bold leading-none">TO</span>
+            <input
+              type="date"
+              value={selectedEndDateStr}
+              min={selectedDateStr}
+              max={getTodayStr()}
+              onChange={(e) => setSelectedEndDateStr(e.target.value)}
+              className="w-full sm:w-[150px] h-[42px] box-border rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 transition-all cursor-pointer"
+            />
           </div>
 
           <div className="relative inline-block text-left">

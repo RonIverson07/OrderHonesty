@@ -93,8 +93,7 @@ export default function ReconciliationPage() {
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState("");
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
-  const [selectedEndDate, setSelectedEndDate] = useState<string | null>(null);
-  const [isRangeMode, setIsRangeMode] = useState(false);
+  const [selectedEndDate, setSelectedEndDate] = useState(new Date().toISOString().slice(0, 10));
 
   // Inventory state
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
@@ -126,7 +125,7 @@ export default function ReconciliationPage() {
     setIngredientPage(0);
     loadOrders();
     loadInventory();
-  }, [selectedDate, selectedEndDate, isRangeMode]);
+  }, [selectedDate, selectedEndDate]);
 
   useEffect(() => {
     loadWeeklyOrders();
@@ -138,7 +137,7 @@ export default function ReconciliationPage() {
       const start = new Date(selectedDate);
       start.setHours(0, 0, 0, 0);
 
-      const end = new Date(isRangeMode && selectedEndDate ? selectedEndDate : selectedDate);
+      const end = new Date(selectedEndDate || selectedDate);
       end.setHours(23, 59, 59, 999);
 
       const { data, error } = await supabase
@@ -458,15 +457,7 @@ export default function ReconciliationPage() {
           <Link href="/dashboard/reconciliation/history" className="btn-secondary text-sm whitespace-nowrap">
             History & Trends
           </Link>
-          <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 h-[38px] shadow-sm ml-2">
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Range</span>
-            <button
-              onClick={() => setIsRangeMode(!isRangeMode)}
-              className={`relative inline-flex h-4 w-7 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isRangeMode ? 'bg-rose-500' : 'bg-gray-200'}`}
-            >
-              <span className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isRangeMode ? 'translate-x-3' : 'translate-x-0'}`} />
-            </button>
-          </div>
+
           {activeTab === "analytics" ? (
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-2 bg-white px-3 py-1.5 border border-gray-200 rounded-xl shadow-sm focus-within:ring-2 focus-within:ring-amber-500/20 focus-within:border-amber-400 transition-all">
@@ -489,7 +480,7 @@ export default function ReconciliationPage() {
                 />
               </div>
             </div>
-          ) : (
+          ) : activeTab === "payments" ? (
             <div className="flex items-center gap-2">
               <input
                 type="date"
@@ -497,20 +488,16 @@ export default function ReconciliationPage() {
                 onChange={(e) => setSelectedDate(e.target.value)}
                 className="input text-sm h-[38px] px-2 shadow-sm"
               />
-              {isRangeMode && (
-                <>
-                  <span className="text-gray-400 text-xs font-bold font-mono">TO</span>
-                  <input
-                    type="date"
-                    value={selectedEndDate || ""}
-                    min={selectedDate}
-                    onChange={(e) => setSelectedEndDate(e.target.value)}
-                    className="input text-sm h-[38px] px-2 shadow-sm"
-                  />
-                </>
-              )}
+              <span className="text-gray-400 text-xs font-bold font-mono">TO</span>
+              <input
+                type="date"
+                value={selectedEndDate || ""}
+                min={selectedDate}
+                onChange={(e) => setSelectedEndDate(e.target.value)}
+                className="input text-sm h-[38px] px-2 shadow-sm"
+              />
             </div>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -656,9 +643,9 @@ export default function ReconciliationPage() {
                 )}
                 <button
                   onClick={() => handleMarkReconciled(false)}
-                  disabled={isPending || paymentVariance === 0 || blockers.length > 0 || isRangeMode}
+                  disabled={isPending || paymentVariance === 0 || blockers.length > 0 || selectedDate !== selectedEndDate}
                   className="btn-primary text-sm disabled:opacity-50"
-                  title={isRangeMode ? "Switch to single day mode to reconcile" : (blockers.length > 0 ? "Resolve blockers first" : "Reconcile Day")}
+                  title={selectedDate !== selectedEndDate ? "Pick a single day to reconcile" : (blockers.length > 0 ? "Resolve blockers first" : "Reconcile Day")}
                 >
                   {isPending ? "Processing..." : "Mark Day Reconciled"}
                 </button>
