@@ -235,10 +235,22 @@ export async function sendReconciliationReminder(date: string) {
   const adminEmail = await getSetting("admin_email", "");
   if (!adminEmail) return { success: false, reason: "no_email" };
 
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://order-honesty.vercel.app";
+  const reconciliationUrl = `${appUrl.replace(/\/+$/g, "")}/dashboard/reconciliation`;
+
+  const contentHtml = `
+    <h2 style="color: #111827; font-size: 20px; font-weight: 600; margin-top: 0; margin-bottom: 16px;">Reconciliation Reminder</h2>
+    <p style="margin:0 0 20px 0;">Hi! Don't forget to mark the day as reconciled. Please ensure all physical inventory and unconfirmed payments are systematically confirmed for the session dated <strong style="color: #111827;">${date}</strong>.</p>
+    <div style="margin-top: 24px;">
+      <a href="${reconciliationUrl}" style="display: inline-block; background-color: #d97706; color: #ffffff; text-decoration: none; padding: 12px 20px; border-radius: 8px; font-weight: 600; font-size: 15px; box-shadow: 0 4px 6px -1px rgba(217, 119, 6, 0.2);">Go to Reconciliation Dashboard</a>
+    </div>
+    <p style="margin: 20px 0 0 0; font-size: 13px; color: #6b7280;">Click the button above to open your dashboard and complete today's audit.</p>
+  `;
+
   return sendEmail(
     adminEmail,
-    `⏳ Pending Reconciliation: ${date}`,
-    buildEmailLayout("Pending Reconciliation", `<h2 style="color: #111827; font-size: 20px; font-weight: 600; margin-top: 0; margin-bottom: 16px;">Reconciliation Reminder</h2><p style="margin:0;">Please remember to systematically reconcile and confirm all physical inventory and unconfirmed GCash payments for the session dated <strong style="color: #111827;">${date}</strong>.</p>`),
+    `⏳ Reminder: Mark Day Reconciled - ${date}`,
+    buildEmailLayout("Action Required", contentHtml),
     "reconciliation_reminder"
   );
 }
