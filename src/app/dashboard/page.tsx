@@ -466,8 +466,8 @@ export default function DashboardPage() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             <SummaryCard dateLabel={dateLabel} icon={<Package className="w-6 h-6 text-amber-500" />} title="Total Orders" value={stats.totalOrders.toString()} subtitle={`${stats.cafeOrders} café · ${stats.fridgeOrders} fridge`} trend="neutral" />
             <SummaryCard dateLabel={dateLabel} icon={<DollarSign className="w-6 h-6 text-emerald-500" />} title="Revenue" value={formatCurrency(stats.totalRevenue)} trend="neutral" />
-            <SummaryCard dateLabel={dateLabel} icon={<TrendingDown className="w-6 h-6 text-red-400" />} title="COGS" value={formatCurrency(stats.totalCost)} trend="neutral" />
-            <SummaryCard dateLabel={dateLabel} icon={<TrendingUp className="w-6 h-6 text-blue-500" />} title="Margin" value={formatCurrency(stats.totalMargin)} subtitle={stats.totalRevenue > 0 ? `${((stats.totalMargin / stats.totalRevenue) * 100).toFixed(1)}%` : "—"} trend="neutral" />
+            <SummaryCard dateLabel={dateLabel} icon={<TrendingDown className="w-6 h-6 text-red-400" />} title="Total Expense" value={formatCurrency(stats.totalCost)} trend="neutral" />
+            <SummaryCard dateLabel={dateLabel} icon={<TrendingUp className="w-6 h-6 text-blue-500" />} title="Gross Profit" value={formatCurrency(stats.totalMargin)} subtitle={stats.totalRevenue > 0 ? `${((stats.totalMargin / stats.totalRevenue) * 100).toFixed(1)}% margin` : "—"} trend="neutral" />
           </div>
 
           {/* Stats Row 2: Reconciliation */}
