@@ -295,7 +295,7 @@ export default function UsersClient({ initialProfiles }: { initialProfiles: Prof
                               {isChangingPassword === profile.id ? "..." : "Change Pwd"}
                             </button>
                           )}
-                          {profile.id !== currentUser?.id && (
+                          {profile.id !== currentUser?.id && profile.email !== 'desk@startuplab.ph' && (
                             <button
                               onClick={() => handleDelete(profile.id)}
                               disabled={isDeleting === profile.id}
