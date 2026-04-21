@@ -15,6 +15,7 @@ const SettingsSchema = z.object({
   }),
   low_stock_threshold: z.number().min(1).max(100),
   admin_email: z.string().email().optional().or(z.literal("")),
+  reconciliation_reminder_time: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).optional().or(z.literal("")),
 });
 
 type SettingsKeys = keyof z.infer<typeof SettingsSchema>;

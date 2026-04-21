@@ -93,6 +93,8 @@ export default function ReconciliationPage() {
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState("");
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
+  const [selectedEndDate, setSelectedEndDate] = useState<string | null>(null);
+  const [isRangeMode, setIsRangeMode] = useState(false);
 
   // Inventory state
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
@@ -124,7 +126,7 @@ export default function ReconciliationPage() {
     setIngredientPage(0);
     loadOrders();
     loadInventory();
-  }, [selectedDate]);
+  }, [selectedDate, selectedEndDate, isRangeMode]);
 
   useEffect(() => {
     loadWeeklyOrders();
@@ -135,7 +137,8 @@ export default function ReconciliationPage() {
       const supabase = createClient();
       const start = new Date(selectedDate);
       start.setHours(0, 0, 0, 0);
-      const end = new Date(selectedDate);
+
+      const end = new Date(isRangeMode && selectedEndDate ? selectedEndDate : selectedDate);
       end.setHours(23, 59, 59, 999);
 
       const { data, error } = await supabase
@@ -453,37 +456,60 @@ export default function ReconciliationPage() {
         </div>
         <div className="flex items-center gap-3">
           <Link href="/dashboard/reconciliation/history" className="btn-secondary text-sm whitespace-nowrap">
-            History &amp; Trends
+            History & Trends
           </Link>
+          <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 h-[38px] shadow-sm ml-2">
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Range</span>
+            <button
+              onClick={() => setIsRangeMode(!isRangeMode)}
+              className={`relative inline-flex h-4 w-7 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isRangeMode ? 'bg-rose-500' : 'bg-gray-200'}`}
+            >
+              <span className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isRangeMode ? 'translate-x-3' : 'translate-x-0'}`} />
+            </button>
+          </div>
           {activeTab === "analytics" ? (
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-2 bg-white px-3 py-1.5 border border-gray-200 rounded-xl shadow-sm focus-within:ring-2 focus-within:ring-amber-500/20 focus-within:border-amber-400 transition-all">
                 <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Start</span>
-                <input 
-                  type="date" 
-                  value={analyticsStart} 
-                  onChange={(e) => setAnalyticsStart(e.target.value)} 
-                  className="text-sm bg-transparent border-none outline-none focus:ring-0 text-gray-800 w-[115px] sm:w-[125px] p-0" 
+                <input
+                  type="date"
+                  value={analyticsStart}
+                  onChange={(e) => setAnalyticsStart(e.target.value)}
+                  className="text-sm bg-transparent border-none outline-none focus:ring-0 text-gray-800 w-[115px] sm:w-[125px] p-0"
                 />
               </div>
               <span className="text-gray-300 font-medium">—</span>
               <div className="flex items-center gap-2 bg-white px-3 py-1.5 border border-gray-200 rounded-xl shadow-sm focus-within:ring-2 focus-within:ring-amber-500/20 focus-within:border-amber-400 transition-all">
                 <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">End</span>
-                <input 
-                  type="date" 
-                  value={analyticsEnd} 
-                  onChange={(e) => setAnalyticsEnd(e.target.value)} 
-                  className="text-sm bg-transparent border-none outline-none focus:ring-0 text-gray-800 w-[115px] sm:w-[125px] p-0" 
+                <input
+                  type="date"
+                  value={analyticsEnd}
+                  onChange={(e) => setAnalyticsEnd(e.target.value)}
+                  className="text-sm bg-transparent border-none outline-none focus:ring-0 text-gray-800 w-[115px] sm:w-[125px] p-0"
                 />
               </div>
             </div>
           ) : (
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="input text-sm"
-            />
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="input text-sm h-[38px] px-2 shadow-sm"
+              />
+              {isRangeMode && (
+                <>
+                  <span className="text-gray-400 text-xs font-bold font-mono">TO</span>
+                  <input
+                    type="date"
+                    value={selectedEndDate || ""}
+                    min={selectedDate}
+                    onChange={(e) => setSelectedEndDate(e.target.value)}
+                    className="input text-sm h-[38px] px-2 shadow-sm"
+                  />
+                </>
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -630,9 +656,9 @@ export default function ReconciliationPage() {
                 )}
                 <button
                   onClick={() => handleMarkReconciled(false)}
-                  disabled={isPending || paymentVariance === 0 || blockers.length > 0}
+                  disabled={isPending || paymentVariance === 0 || blockers.length > 0 || isRangeMode}
                   className="btn-primary text-sm disabled:opacity-50"
-                  title={blockers.length > 0 ? "Resolve blockers first" : "Reconcile Day"}
+                  title={isRangeMode ? "Switch to single day mode to reconcile" : (blockers.length > 0 ? "Resolve blockers first" : "Reconcile Day")}
                 >
                   {isPending ? "Processing..." : "Mark Day Reconciled"}
                 </button>
@@ -730,7 +756,7 @@ export default function ReconciliationPage() {
                 </tbody>
               </table>
             </div>
-            
+
             {orders.length > 0 && (
               <div className="flex items-center justify-between p-4 border-t border-gray-100 bg-white">
                 <span className="text-xs text-gray-500">
@@ -869,9 +895,9 @@ export default function ReconciliationPage() {
                         ) : variance === 0 ? (
                           <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Match</span>
                         ) : isSevere ? (
-                            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-red-50 text-red-700 flex items-center gap-1">
-                              <AlertTriangle className="w-3 h-3" />{variance < 0 ? "Missing" : "Excess"}
-                            </span>
+                          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-red-50 text-red-700 flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3" />{variance < 0 ? "Missing" : "Excess"}
+                          </span>
                         ) : (
                           <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 flex items-center gap-1">
                             <AlertTriangle className="w-3 h-3" />{variance < 0 ? "Short" : "Over"}
@@ -886,7 +912,7 @@ export default function ReconciliationPage() {
                 )}
               </tbody>
             </table>
-            
+
             {inventoryItems.length > 0 && (
               <div className="flex items-center justify-between p-4 border-t border-gray-100 bg-white">
                 <span className="text-xs text-gray-500">
@@ -1062,7 +1088,7 @@ export default function ReconciliationPage() {
                 )}
               </tbody>
             </table>
-            
+
             {ingredientItems.length > 0 && (
               <div className="flex items-center justify-between p-4 border-t border-gray-100 bg-white">
                 <span className="text-xs text-gray-500">
@@ -1096,14 +1122,14 @@ export default function ReconciliationPage() {
       {activeTab === "analytics" && (() => {
         // dynamic revenue trend anchored to analyticsStart and analyticsEnd
         const revenueByDay: Record<string, { date: string; cafe: number; fridge: number; target: number }> = {};
-        
+
         let startD = new Date(analyticsStart);
-        startD.setHours(0,0,0,0);
+        startD.setHours(0, 0, 0, 0);
         let endD = new Date(analyticsEnd);
-        endD.setHours(0,0,0,0);
-        
+        endD.setHours(0, 0, 0, 0);
+
         if (startD.getTime() > endD.getTime()) {
-           const temp = startD; startD = endD; endD = temp;
+          const temp = startD; startD = endD; endD = temp;
         }
 
         let currentD = new Date(startD);
@@ -1120,7 +1146,7 @@ export default function ReconciliationPage() {
             else revenueByDay[key].fridge += Number(o.total_price);
           }
         });
-        const revenueTrendData = Object.values(revenueByDay).sort((a,b) => a.target - b.target);
+        const revenueTrendData = Object.values(revenueByDay).sort((a, b) => a.target - b.target);
 
         // Top 5 products for the selected custom range
         const productSales: Record<string, { name: string; qty: number }> = {};

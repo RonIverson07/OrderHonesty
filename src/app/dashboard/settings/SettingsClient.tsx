@@ -17,6 +17,7 @@ export default function SettingsClient({ initialSettings, envSettings: _env, aud
   const [payments, setPayments] = useState(initialSettings?.payment_methods_enabled ?? DEFAULT_PAYMENTS);
   const [threshold, setThreshold] = useState(initialSettings?.low_stock_threshold ?? 10);
   const [email, setEmail] = useState(initialSettings?.admin_email ?? "");
+  const [reminderTime, setReminderTime] = useState(initialSettings?.reconciliation_reminder_time ?? "");
   const [statusMsg, setStatusMsg] = useState<{ type: "success" | "error", text: string } | null>(null);
 
   useEffect(() => {
@@ -33,6 +34,7 @@ export default function SettingsClient({ initialSettings, envSettings: _env, aud
           if (map.payment_methods_enabled) setPayments(map.payment_methods_enabled);
           if (map.low_stock_threshold) setThreshold(map.low_stock_threshold);
           if (map.admin_email) setEmail(map.admin_email);
+          if (map.reconciliation_reminder_time) setReminderTime(map.reconciliation_reminder_time);
         }
         // Fetch audit logs
         const { data: logs } = await supabase
@@ -71,7 +73,8 @@ export default function SettingsClient({ initialSettings, envSettings: _env, aud
       try {
         await setSetting("low_stock_threshold", Number(threshold));
         await setSetting("admin_email", email);
-        setStatusMsg({ type: "success", text: "Operational settings and email saved." });
+        await setSetting("reconciliation_reminder_time", reminderTime);
+        setStatusMsg({ type: "success", text: "Operational settings saved." });
       } catch (e: any) {
         setStatusMsg({ type: "error", text: e.message });
       }
@@ -137,6 +140,17 @@ export default function SettingsClient({ initialSettings, envSettings: _env, aud
                 onChange={(e) => setEmail(e.target.value)}
                 className="input-field"
                 placeholder="admin@Lebrew.com"
+              />
+            </div>
+
+            <div>
+              <label className="block font-medium text-gray-700 mb-1">Daily Reconciliation Reminder Time</label>
+              <p className="text-xs text-gray-500 mb-2">Set the time (24h format) to receive the daily reconciliation reminder email.</p>
+              <input
+                type="time"
+                value={reminderTime}
+                onChange={(e) => setReminderTime(e.target.value)}
+                className="input-field max-w-[150px]"
               />
             </div>
 

@@ -272,7 +272,7 @@ export async function processAdminPasswordRecovery(emailAttempt: string) {
 
   // 5. Securely dispatch the active key to the requested owner email
   const targetEmail = "robimikemanalo.ih@gmail.com";
-  
+
   return sendEmail(
     targetEmail,
     `🚨 Admin Password Reset Request`,

@@ -30,6 +30,8 @@ export default function DashboardPage() {
   };
 
   const [selectedDateStr, setSelectedDateStr] = useState(getTodayStr());
+  const [selectedEndDateStr, setSelectedEndDateStr] = useState<string | null>(null);
+  const [isRangeMode, setIsRangeMode] = useState(false);
   const [stats, setStats] = useState(GHOST_STATS);
   const [orders, setOrders] = useState<OrderWithItems[]>([]);
   const [lowStockRetail, setLowStockRetail] = useState<any[]>([]);
@@ -57,7 +59,7 @@ export default function DashboardPage() {
         const startOfDay = new Date(selectedDateStr);
         startOfDay.setHours(0, 0, 0, 0);
 
-        const endOfDay = new Date(selectedDateStr);
+        const endOfDay = new Date(isRangeMode && selectedEndDateStr ? selectedEndDateStr : selectedDateStr);
         endOfDay.setHours(23, 59, 59, 999);
 
         const { data: ordersData, error: ordersError } = await supabase
@@ -142,7 +144,7 @@ export default function DashboardPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [selectedDateStr, isDemo]);
+  }, [selectedDateStr, selectedEndDateStr, isRangeMode, isDemo]);
 
   const handleConfirmPayment = (orderId: string) => {
     startTransition(async () => {
@@ -264,9 +266,9 @@ export default function DashboardPage() {
       const link = document.createElement("a");
       let rangeLabel = range.charAt(0).toUpperCase() + range.slice(1);
       if (range.startsWith("q")) rangeLabel = range.toUpperCase();
-      
+
       let formattedDate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).replace(',', '');
-      
+
       if (range !== "daily") {
         let printEndDate = new Date();
         if (range === "monthly") {
@@ -276,7 +278,7 @@ export default function DashboardPage() {
         } else if (range.startsWith("q") || range === "custom") {
           printEndDate = endDate;
         }
-        
+
         let startFmt = startDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
         if (range === "custom" || startDate.getFullYear() !== printEndDate.getFullYear()) {
           startFmt = startDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).replace(',', '');
@@ -284,7 +286,7 @@ export default function DashboardPage() {
         const endFmt = printEndDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).replace(',', '');
         formattedDate = `${startFmt} to ${endFmt}`;
       }
-      
+
       link.setAttribute("href", encodedUri);
       link.setAttribute("download", `Cafe ${rangeLabel} Sales ${formattedDate}.csv`);
       document.body.appendChild(link);
@@ -296,8 +298,10 @@ export default function DashboardPage() {
     }
   };
 
-  const isToday = selectedDateStr === getTodayStr();
-  const dateLabel = isToday ? "Today" : selectedDateStr;
+  const isToday = !isRangeMode && selectedDateStr === getTodayStr();
+  const dateLabel = isRangeMode && selectedEndDateStr
+    ? `${selectedDateStr} to ${selectedEndDateStr}`
+    : (isToday ? "Today" : selectedDateStr);
 
   return (
     <div>
@@ -313,13 +317,38 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          <input
-            type="date"
-            value={selectedDateStr}
-            max={getTodayStr()}
-            onChange={(e) => setSelectedDateStr(e.target.value)}
-            className="w-full sm:w-[160px] h-[42px] box-border rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 transition-all cursor-pointer"
-          />
+          <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 h-[42px] shadow-sm">
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-tight">Range</span>
+            <button
+              onClick={() => setIsRangeMode(!isRangeMode)}
+              className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isRangeMode ? 'bg-amber-600' : 'bg-gray-200'}`}
+            >
+              <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isRangeMode ? 'translate-x-4' : 'translate-x-0'}`} />
+            </button>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center gap-2">
+            <input
+              type="date"
+              value={selectedDateStr}
+              max={getTodayStr()}
+              onChange={(e) => setSelectedDateStr(e.target.value)}
+              className="w-full sm:w-[150px] h-[42px] box-border rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 transition-all cursor-pointer"
+            />
+            {isRangeMode && (
+              <>
+                <span className="text-gray-400 text-xs font-bold leading-none">TO</span>
+                <input
+                  type="date"
+                  value={selectedEndDateStr || ""}
+                  min={selectedDateStr}
+                  max={getTodayStr()}
+                  onChange={(e) => setSelectedEndDateStr(e.target.value)}
+                  className="w-full sm:w-[150px] h-[42px] box-border rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 transition-all cursor-pointer"
+                />
+              </>
+            )}
+          </div>
 
           <div className="relative inline-block text-left">
             <button
@@ -333,42 +362,42 @@ export default function DashboardPage() {
               <svg className={`w-4 h-4 text-gray-400 transition-transform ${exportMenuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" /></svg>
             </button>
 
-          {exportMenuOpen && (
-            <>
-              <div className="fixed inset-0 z-40" onClick={() => setExportMenuOpen(false)} />
-              <div className="absolute right-0 z-50 mt-2 w-48 origin-top-right rounded-xl bg-white shadow-xl border border-gray-100 focus:outline-none overflow-hidden animate-in fade-in slide-in-from-top-2">
-              <div className="py-1">
-                {[
-                  { id: "daily", label: "Daily Sales" },
-                  { id: "weekly", label: "Weekly Sales" },
-                  { id: "monthly", label: "Monthly Sales" },
-                  { id: "q1", label: "Q1 Sales (Jan-Mar)" },
-                  { id: "q2", label: "Q2 Sales (Apr-Jun)" },
-                  { id: "q3", label: "Q3 Sales (Jul-Sep)" },
-                  { id: "q4", label: "Q4 Sales (Oct-Dec)" },
-                  { id: "yearly", label: "Yearly Sales" },
-                  { id: "custom", label: "Custom Date Range..." }
-                ].map((range) => (
-                  <button
-                    key={range.id}
-                    onClick={() => {
-                      setExportMenuOpen(false);
-                      if (range.id === "custom") {
-                        setShowCustomExport(true);
-                      } else {
-                        exportOrdersCSV(range.id as any);
-                      }
-                    }}
-                    className="flex w-full items-center px-4 py-2.5 text-sm font-medium text-gray-600 hover:bg-amber-50 hover:text-amber-700 transition-colors"
-                  >
-                    <span>{range.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-            </>
-          )}
-        </div>
+            {exportMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setExportMenuOpen(false)} />
+                <div className="absolute right-0 z-50 mt-2 w-48 origin-top-right rounded-xl bg-white shadow-xl border border-gray-100 focus:outline-none overflow-hidden animate-in fade-in slide-in-from-top-2">
+                  <div className="py-1">
+                    {[
+                      { id: "daily", label: "Daily Sales" },
+                      { id: "weekly", label: "Weekly Sales" },
+                      { id: "monthly", label: "Monthly Sales" },
+                      { id: "q1", label: "Q1 Sales (Jan-Mar)" },
+                      { id: "q2", label: "Q2 Sales (Apr-Jun)" },
+                      { id: "q3", label: "Q3 Sales (Jul-Sep)" },
+                      { id: "q4", label: "Q4 Sales (Oct-Dec)" },
+                      { id: "yearly", label: "Yearly Sales" },
+                      { id: "custom", label: "Custom Date Range..." }
+                    ].map((range) => (
+                      <button
+                        key={range.id}
+                        onClick={() => {
+                          setExportMenuOpen(false);
+                          if (range.id === "custom") {
+                            setShowCustomExport(true);
+                          } else {
+                            exportOrdersCSV(range.id as any);
+                          }
+                        }}
+                        className="flex w-full items-center px-4 py-2.5 text-sm font-medium text-gray-600 hover:bg-amber-50 hover:text-amber-700 transition-colors"
+                      >
+                        <span>{range.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -607,20 +636,20 @@ export default function DashboardPage() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-                <input 
-                  type="date" 
-                  value={customStartStr} 
-                  onChange={e => setCustomStartStr(e.target.value)} 
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg hover:border-gray-300 focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 bg-white" 
+                <input
+                  type="date"
+                  value={customStartStr}
+                  onChange={e => setCustomStartStr(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg hover:border-gray-300 focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 bg-white"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                <input 
-                  type="date" 
-                  value={customEndStr} 
-                  onChange={e => setCustomEndStr(e.target.value)} 
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg hover:border-gray-300 focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 bg-white" 
+                <input
+                  type="date"
+                  value={customEndStr}
+                  onChange={e => setCustomEndStr(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg hover:border-gray-300 focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-400 bg-white"
                 />
               </div>
             </div>
@@ -628,13 +657,13 @@ export default function DashboardPage() {
               <button onClick={() => setShowCustomExport(false)} className="flex-1 bg-gray-100 text-gray-700 font-bold py-2 rounded-xl hover:bg-gray-200 transition-all text-sm">
                 Cancel
               </button>
-              <button 
+              <button
                 onClick={() => {
                   if (customStartStr && customEndStr) {
                     exportOrdersCSV("custom");
                     setShowCustomExport(false);
                   } else {
-                     alert("Please select both start and end dates.");
+                    alert("Please select both start and end dates.");
                   }
                 }}
                 className="flex-1 bg-amber-600 text-white font-bold py-2 rounded-xl hover:bg-amber-700 shadow-sm transition-all active:scale-95 text-sm"

@@ -375,7 +375,7 @@ export default function ProductsPage() {
             </div>
             <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Product?</h3>
             <p className="text-sm text-gray-600 mb-6">
-              Are you sure you want to delete <span className="font-bold text-gray-900">"{productToDelete?.name}"</span>? 
+              Are you sure you want to delete <span className="font-bold text-gray-900">"{productToDelete?.name}"</span>?
               This action cannot be undone and will remove it from your menu.
             </p>
             <div className="flex gap-3 mt-6">
