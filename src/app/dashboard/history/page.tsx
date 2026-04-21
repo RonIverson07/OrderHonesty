@@ -261,7 +261,10 @@ export default function OrderHistoryPage() {
             </select>
 
             <input
-              type="date"
+              type={selectedDateStr ? "date" : "text"}
+              placeholder="dd/mm/yyyy"
+              onFocus={(e) => (e.target.type = "date")}
+              onBlur={(e) => { if (!e.target.value) e.target.type = "text"; }}
               value={selectedDateStr}
               max={getTodayStr()}
               onChange={(e) => setSelectedDateStr(e.target.value)}
