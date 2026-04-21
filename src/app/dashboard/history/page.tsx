@@ -263,7 +263,16 @@ export default function OrderHistoryPage() {
             <input
               type={selectedDateStr ? "date" : "text"}
               placeholder="dd/mm/yyyy"
-              onFocus={(e) => (e.target.type = "date")}
+              onPointerDown={(e) => {
+                const target = e.target as HTMLInputElement;
+                if (target.type !== "date") target.type = "date";
+              }}
+              onFocus={(e) => {
+                e.target.type = "date";
+                try {
+                  (e.target as any).showPicker();
+                } catch (err) {}
+              }}
               onBlur={(e) => { if (!e.target.value) e.target.type = "text"; }}
               value={selectedDateStr}
               max={getTodayStr()}
