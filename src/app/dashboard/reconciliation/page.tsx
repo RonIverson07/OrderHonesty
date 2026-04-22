@@ -103,8 +103,9 @@ export default function ReconciliationPage() {
   const [ingredientItems, setIngredientItems] = useState<IngredientAuditItem[]>([]);
   const [ingredientsSaved, setIngredientsSaved] = useState(false);
 
-  // Admin Override Modal state
+  // Confirmation Modals
   const [showOverrideModal, setShowOverrideModal] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [overrideReason, setOverrideReason] = useState("");
 
   // Weekly orders for analytics charts
@@ -251,15 +252,25 @@ export default function ReconciliationPage() {
 
   // ---- Lifecycle Blockers Calculation ----
   const blockers: string[] = [];
+  const hardBlockers: string[] = [];
+
   if (orders.some((o) => o.payment_status === "pending" || o.payment_status === "failed")) {
-    blockers.push("Unresolved pending or failed payments exist.");
+    const msg = "Unresolved pending or failed payments exist.";
+    blockers.push(msg);
+    hardBlockers.push(msg);
   }
   if (orders.some((o) => o.payment_proof_status === "flagged")) {
-    blockers.push("Payment proofs are flagged and unresolved.");
+    const msg = "Payment proofs are flagged and unresolved.";
+    blockers.push(msg);
+    hardBlockers.push(msg);
   }
   if (orders.some((o) => !!o.risk_flag)) {
-    blockers.push("Critical risk flags exist.");
+    const msg = "Critical risk flags exist.";
+    blockers.push(msg);
+    hardBlockers.push(msg);
   }
+  
+  // Inventory checks are now soft blockers (warnings only)
   if (inventoryItems.length > 0 && !inventorySaved) {
     blockers.push("Retail inventory audit not completed or saved today.");
   }
@@ -270,6 +281,9 @@ export default function ReconciliationPage() {
   // ---- Payment Actions ----
   const handleMarkReconciled = (isOverride = false) => {
     if (isOverride && !overrideReason.trim()) return;
+    
+    // Modal is now handled in UI layer, close it before proceeding
+    if (!isOverride) setShowConfirmModal(false);
 
     startTransition(async () => {
       if (isDemo) {
@@ -630,6 +644,34 @@ export default function ReconciliationPage() {
 
           {/* Mark Day Reconciled action & Lifecycle Enforcement */}
           <div className="flex flex-col mb-6">
+            {paymentVariance === 0 && hardBlockers.length === 0 && orders.length > 0 && (
+              <div className="mb-4 p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 shadow-sm flex items-center justify-between border-l-4 border-l-emerald-500">
+                <div className="flex items-center gap-3">
+                  <div className="bg-emerald-100 p-2 rounded-full">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-sm">Balanced & Ready!</p>
+                    <p className="text-xs text-emerald-600">All payments are confirmed. Don't forget to click "Mark Day Reconciled" below to finalize this session.</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {paymentVariance !== 0 && orders.length > 0 && (
+              <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-xl text-blue-800 shadow-sm flex items-center justify-between border-l-4 border-l-blue-500">
+                <div className="flex items-center gap-3">
+                  <div className="bg-blue-100 p-2 rounded-full">
+                    <Receipt className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-sm">Payments Pending Confirmation</p>
+                    <p className="text-xs text-blue-600">Ensure all orders (like ₱{Math.abs(paymentVariance)}) are verified so you can reconcile the day.</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Order Details</h2>
               <div className="flex gap-2">
@@ -642,10 +684,10 @@ export default function ReconciliationPage() {
                   </button>
                 )}
                 <button
-                  onClick={() => handleMarkReconciled(false)}
-                  disabled={isPending || paymentVariance === 0 || blockers.length > 0 || selectedDate !== selectedEndDate}
+                  onClick={() => setShowConfirmModal(true)}
+                  disabled={isPending || paymentVariance !== 0 || hardBlockers.length > 0 || selectedDate !== selectedEndDate || orders.length === 0}
                   className="btn-primary text-sm disabled:opacity-50"
-                  title={selectedDate !== selectedEndDate ? "Pick a single day to reconcile" : (blockers.length > 0 ? "Resolve blockers first" : "Reconcile Day")}
+                  title={selectedDate !== selectedEndDate ? "Pick a single day to reconcile" : (paymentVariance !== 0 ? "Confirm all payments first" : hardBlockers.length > 0 ? "Resolve payment blockers first" : "Reconcile Day")}
                 >
                   {isPending ? "Processing..." : "Mark Day Reconciled"}
                 </button>
@@ -1267,6 +1309,44 @@ export default function ReconciliationPage() {
                 className="btn-primary bg-red-600 text-white hover:bg-red-700 hover:ring-red-200 text-sm font-bold shadow-sm disabled:opacity-50 px-6"
               >
                 {isPending ? "Forcing..." : "Force Close Day"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ===== RECONCILE CONFIRM MODAL ===== */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="card p-6 w-full max-w-sm mx-4 animate-slide-in shadow-2xl border border-amber-100">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-amber-600 border border-amber-200 bg-amber-50 p-1.5 rounded-full">
+                <Receipt className="w-5 h-5" />
+              </span>
+              <h3 className="text-xl font-bold text-gray-900">Reconcile Day?</h3>
+            </div>
+            
+            <div className="mb-6">
+              <p className="text-sm text-gray-600 leading-relaxed">
+                Confirming this will officially close the records for <span className="font-bold text-gray-900">{new Date(selectedDate).toLocaleDateString("en-PH", { month: "long", day: "numeric" })}</span>.
+              </p>
+              <p className="text-xs text-gray-400 mt-2 italic">
+                All payment-verified orders will be finalized in the financial history.
+              </p>
+            </div>
+
+            <div className="flex gap-2 justify-end">
+              <button 
+                onClick={() => setShowConfirmModal(false)} 
+                className="btn-secondary text-sm px-4"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleMarkReconciled(false)}
+                disabled={isPending}
+                className="btn-primary text-sm font-bold shadow-sm px-6"
+              >
+                {isPending ? "Closing..." : "Yes, Close Day"}
               </button>
             </div>
           </div>

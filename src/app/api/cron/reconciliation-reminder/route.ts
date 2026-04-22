@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 import { getSetting } from "@/lib/domain/settings";
-import { sendReconciliationReminder } from "@/lib/domain/notifications";
+import { sendReconciliationReminder, sendUnconfirmedOrderAlert } from "@/lib/domain/notifications";
 
 /**
  * Cron endpoint to trigger reconciliation reminders.
@@ -58,7 +59,31 @@ export async function GET(req: Request) {
       
       console.log(`[Cron] Triggering reconciliation reminder for ${dateStr} (Current: ${manilaTimeStr}, Configured: ${configuredTime})`);
       
-      const result = await sendReconciliationReminder(dateStr);
+      const supabase = await createClient();
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date();
+      endOfDay.setHours(23, 59, 59, 999);
+
+      // Check for unconfirmed orders specifically
+      const { data: unconfirmed } = await supabase
+        .from("orders")
+        .select("order_number, total_price")
+        .gte("created_at", startOfDay.toISOString())
+        .lte("created_at", endOfDay.toISOString())
+        .eq("payment_confirmed", false);
+
+      // If there are ABSOLUTELY NO unconfirmed orders, then we are ready
+      const { data: totalOrders } = await supabase
+        .from("orders")
+        .select("id")
+        .gte("created_at", startOfDay.toISOString())
+        .lte("created_at", endOfDay.toISOString());
+
+      const isReady = (totalOrders?.length ?? 0) > 0 && (!unconfirmed || unconfirmed.length === 0);
+      
+      // Send one consolidated email for everything
+      const result = await sendReconciliationReminder(dateStr, isReady, unconfirmed || []);
       
       return NextResponse.json({ 
         success: true, 
