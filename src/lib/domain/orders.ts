@@ -403,7 +403,8 @@ export async function markDayReconciled(
     const totalConfirmed = (allOrders ?? []).filter((o) => o.payment_confirmed).reduce((s, o) => s + Number(o.total_price), 0);
 
     // Batch confirm unconfirmed orders
-    const { data, error } = await supabase
+    // Batch confirm unconfirmed orders
+    const { data: updatedOrders, error } = await supabase
       .from("orders")
       .update({
         payment_confirmed: true,
@@ -414,16 +415,19 @@ export async function markDayReconciled(
       .gte("created_at", startOfDay.toISOString())
       .lte("created_at", endOfDay.toISOString())
       .eq("payment_confirmed", false)
-      .select("id");
+      .select("total_price");
 
     if (error) throw error;
+
+    const newlyConfirmedTotal = (updatedOrders ?? []).reduce((s, o) => s + Number(o.total_price), 0);
+    const finalConfirmedTotal = totalConfirmed + newlyConfirmedTotal;
 
     // V3: Insert reconciliation_days record
     const { error: reconcError } = await supabase.from("reconciliation_days").insert({
       date: dateStr,
       total_expected: totalExpected,
-      total_confirmed: totalConfirmed + (data ?? []).reduce(() => 0, 0),
-      variance: totalExpected - totalConfirmed,
+      total_confirmed: finalConfirmedTotal,
+      variance: totalExpected - finalConfirmedTotal,
       reconciled_by: userId,
       reconciled_at: new Date().toISOString(),
       override_reason: overrideReason ?? null,
@@ -431,20 +435,16 @@ export async function markDayReconciled(
       override_at: overrideReason ? new Date().toISOString() : null,
     });
 
-    if (reconcError) console.error("[markDayReconciled] reconciliation_days insert:", reconcError);
-    
-    // Trigger success notification
+    if (reconcError) throw reconcError;
+
+    // Trigger success notification (optional/async)
     try {
-      const finalRevenue = totalConfirmed + (data ?? []).reduce(() => 0, 0); // data is from the update select
-      // Actually, data is the orders we just confirmed. We need their prices if we want to be exact here, 
-      // but totalConfirmed was calculated before the batch update.
-      // Let's just use the totalExpected as the final revenue since we just reconciled everything.
-      await sendReconciliationSuccess(dateStr, allOrders?.length ?? 0, totalExpected);
+      await sendReconciliationSuccess(dateStr, finalConfirmedTotal, totalExpected - finalConfirmedTotal);
     } catch (notifyErr) {
       console.warn("[markDayReconciled] Success notification failed:", notifyErr);
     }
 
-    return { success: true, count: data?.length ?? 0 };
+    return { success: true, count: updatedOrders?.length ?? 0 };
   } catch (err) {
     return { success: false, count: 0, error: err instanceof Error ? err.message : "Error" };
   }

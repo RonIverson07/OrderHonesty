@@ -239,18 +239,18 @@ export async function sendLowStockAlert(productId: string, productName: string, 
 }
 
 export async function sendReconciliationReminder(
-  date: string, 
-  isReady: boolean = false, 
+  date: string,
+  isReady: boolean = false,
   pendingOrders: { order_number: string; total_price: number }[] = []
 ) {
-  const adminEmail = (await getSetting<string>("admin_email")) || "roniversonroguel.startuplab@gmail.com"; 
+  const adminEmail = (await getSetting<string>("admin_email")) || "roniversonroguel.startuplab@gmail.com";
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://order-honesty.vercel.app";
   const reconciliationUrl = `${appUrl.replace(/\/+$/g, "")}/dashboard/reconciliation`;
 
   const title = isReady ? "Everything is Balanced!" : "Action Required: Reconciliation";
   const buttonText = "Mark Day Reconciled";
-  const statusColor = isReady ? "#059669" : "#d97706"; 
+  const statusColor = isReady ? "#059669" : "#d97706";
 
   // We always use the action URL now so the "Mark Day Reconciled" button 
   // actually tries to perform the action and gives feedback in the browser.
@@ -272,10 +272,10 @@ export async function sendReconciliationReminder(
   const contentHtml = `
     <h2 style="color: #111827; font-size: 20px; font-weight: 600; margin-top: 0; margin-bottom: 16px;">${title}</h2>
     <p style="margin:0 0 20px 0;">
-      ${isReady 
-        ? `Great news! All payments for the session dated <strong>${date}</strong> have been confirmed and the accounts are balanced.`
-        : `Hi! Don't forget you still need to mark the day as reconciled for <strong>${date}</strong>. ${pendingOrders.length > 0 ? `There are <strong>${pendingOrders.length}</strong> payments awaiting your verification below. once you have confirmed all orders, you can finalize the session directly by clicking the button.` : "Please ensure your audits are complete before closing."}`
-      }
+      ${isReady
+      ? `Great news! All payments for the session dated <strong>${date}</strong> have been confirmed and the accounts are balanced.`
+      : `Hi! Don't forget you still need to mark the day as reconciled for <strong>${date}</strong>. ${pendingOrders.length > 0 ? `There are <strong>${pendingOrders.length}</strong> payments awaiting your verification below. once you have confirmed all orders, you can finalize the session directly by clicking the button.` : "Please ensure your audits are complete before closing."}`
+    }
     </p>
     ${ordersListHtml}
     <div style="margin-top: 24px;">
