@@ -140,7 +140,12 @@ function signEmailActionToken(payload: any): string {
 }
 
 function buildReconciliationActionUrl(date: string): string {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://cafe.moonshotdigital.com.ph";
+  // Force production domain for official emails, fallback to localhost for dev
+  const isProd = process.env.NODE_ENV === "production";
+  const appUrl = isProd 
+    ? "https://cafe.moonshotdigital.com.ph" 
+    : (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000");
+
   const exp = Math.floor(Date.now() / 1000) + 60 * 60 * 24; // Valid for 24h
   const token = signEmailActionToken({ date, action: "reconcile", exp });
   return `${appUrl.replace(/\/+$/g, "")}/api/email/reconcile?token=${encodeURIComponent(token)}&date=${date}`;
@@ -245,7 +250,11 @@ export async function sendReconciliationReminder(
 ) {
   const adminEmail = (await getSetting<string>("admin_email")) || "roniversonroguel.startuplab@gmail.com";
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://cafe.moonshotdigital.com.ph";
+  // Force production domain for official emails, fallback to localhost for dev
+  const isProd = process.env.NODE_ENV === "production";
+  const appUrl = isProd 
+    ? "https://cafe.moonshotdigital.com.ph" 
+    : (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000");
   const reconciliationUrl = `${appUrl.replace(/\/+$/g, "")}/dashboard/reconciliation`;
 
   const title = isReady ? "Everything is Balanced!" : "Action Required: Reconciliation";
