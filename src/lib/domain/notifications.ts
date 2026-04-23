@@ -8,7 +8,10 @@ import crypto from "crypto";
 type NotificationType = "new_order" | "low_stock" | "reconciliation_reminder" | "test" | "forgot_password" | "reconciliation_success" | "unconfirmed_alert";
 
 async function logNotification(type: NotificationType, status: "sent" | "failed", errorMessage?: string) {
-  const supabase = await createClient();
+  const supabase = createSupabaseAdmin(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
   await supabase.from("notification_logs").insert({
     type,
     status,
@@ -23,7 +26,10 @@ async function logNotification(type: NotificationType, status: "sent" | "failed"
 async function canSendNotification(type: NotificationType, identityKey?: string): Promise<boolean> {
   if (type === "new_order" || type === "test" || type === "forgot_password" || type === "reconciliation_success" || type === "unconfirmed_alert") return true;
 
-  const supabase = await createClient();
+  const supabase = createSupabaseAdmin(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
   // Check if sent in last 24h
   const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
