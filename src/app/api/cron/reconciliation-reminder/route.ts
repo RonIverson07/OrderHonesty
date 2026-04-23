@@ -65,6 +65,22 @@ export async function GET(req: Request) {
       const endOfDay = new Date();
       endOfDay.setHours(23, 59, 59, 999);
 
+      // 1. Check if the day is ALREADY RECONCILED. If so, exit immediately.
+      const { data: existingReconciliation } = await supabase
+        .from("reconciliations")
+        .select("id")
+        .gte("reconciled_date", startOfDay.toISOString())
+        .lte("reconciled_date", endOfDay.toISOString())
+        .maybeSingle();
+
+      if (existingReconciliation) {
+        return NextResponse.json({ 
+          success: true, 
+          triggered: false, 
+          message: "Day is already reconciled. No reminder needed today." 
+        });
+      }
+
       // Check for unconfirmed orders specifically
       const { data: unconfirmed } = await supabase
         .from("orders")
