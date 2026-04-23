@@ -93,11 +93,16 @@ export async function GET(request: NextRequest) {
       .select("order_number")
       .gte("created_at", start.toISOString())
       .lte("created_at", end.toISOString())
-      .eq("payment_confirmed", false)
-      .limit(1);
+      .eq("payment_confirmed", false);
 
     if (unconfirmed && unconfirmed.length > 0) {
-       return new NextResponse(renderHtml("Reconciliation Blocked", `Cannot reconcile ${date} because there are unconfirmed orders (e.g. #${unconfirmed[0].order_number}). Please verify all payments in the dashboard first.`, true), {
+       const orderList = unconfirmed.map(o => `<li>#${o.order_number}</li>`).join("");
+       const message = `
+         Cannot reconcile ${date} because there are unconfirmed orders:<br/>
+         <ul style="margin: 10px 0; padding-left: 20px;">${orderList}</ul>
+         Please verify these payments in the dashboard first.
+       `;
+       return new NextResponse(renderHtml("Reconciliation Blocked", message, true), {
          status: 200, // Status 200 but error UI
          headers: { "Content-Type": "text/html; charset=utf-8" },
        });

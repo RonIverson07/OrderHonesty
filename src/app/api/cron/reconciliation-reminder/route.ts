@@ -72,7 +72,7 @@ export async function GET(req: Request) {
       success: true, 
       triggered: result.success,
       status: isReady ? "Balanced" : "Action Required",
-      message: result.message
+      message: result.success ? "Reminder sent" : (result.reason || result.error || "Execution skipped")
     });
 
   } catch (error: any) {
