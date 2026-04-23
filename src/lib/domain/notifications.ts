@@ -78,7 +78,7 @@ async function sendEmail(to: string, subject: string, htmlHtml: string, type: No
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "Lebrew System <noreply@cafe.moonshotdigital.com.ph>",
+        from: "Cafe System <noreply@cafe.moonshotdigital.com.ph>",
         to,
         subject,
         html: htmlHtml,
@@ -110,14 +110,14 @@ function buildEmailLayout(title: string, contentHtml: string): string {
 </head>
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f9fafb; margin: 0; padding: 20px;">
   <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border: 1px solid #f3f4f6;">
-    <div style="background-color: #d97706; padding: 24px 32px; text-align: center;">
-      <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.5px;">Lebrew</h1>
+    <div style="background: #d97706; padding: 24px; text-align: center;">
+      <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.5px;">Cafe</h1>
     </div>
     <div style="padding: 32px; color: #374151; font-size: 15px; line-height: 1.6;">
       ${contentHtml}
     </div>
-    <div style="background-color: #f9fafb; padding: 24px 32px; text-align: center; font-size: 13px; color: #6b7280; border-top: 1px solid #f3f4f6;">
-      <p style="margin: 0;">This is an automated notification from your Lebrew Management System.</p>
+    <div style="padding: 24px; text-align: center; border-top: 1px solid #f3f4f6;">
+      <p style="margin: 0;">This is an automated notification from your Cafe Management System.</p>
     </div>
   </div>
 </body>
@@ -171,8 +171,8 @@ export async function sendTestNotification(toEmail?: string) {
 
   return sendEmail(
     target,
-    "Lebrew: Systematic Notification Test ☕",
-    buildEmailLayout("System Test", `<h2 style="color: #111827; font-size: 20px; margin-top: 0; margin-bottom: 16px;">System Test Successful</h2><p style="margin:0 0 16px 0;">This is a test notification from your Lebrew system settings. If you received this, your automated email configuration is working perfectly natively!</p>`),
+    "Cafe: Systematic Notification Test ☕",
+    buildEmailLayout("System Test", `<h2 style="color: #111827; font-size: 20px; margin-top: 0; margin-bottom: 16px;">System Test Successful</h2><p style="margin:0 0 16px 0;">This is a test notification from your Cafe system settings. If you received this, your automated email configuration is working perfectly natively!</p>`),
     "test"
   );
 }
@@ -206,7 +206,7 @@ export async function sendNewOrderAlert(orderId: string, orderNumber: string, to
             </td>
           </tr>
         </table>
-        <p style="margin: 10px 0 0 0; font-size: 13px; color: #6b7280;">These buttons update your Reconciliation status inside Lebrew.</p>
+        <p style="margin: 10px 0 0 0; font-size: 13px; color: #6b7280;">These buttons update your Reconciliation status inside the Cafe System.</p>
       </div>
     `;
   } catch (e) {
