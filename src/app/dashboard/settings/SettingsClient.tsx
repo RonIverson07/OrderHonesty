@@ -150,10 +150,10 @@ export default function SettingsClient({ initialSettings, envSettings: _env, aud
               <p className="text-xs text-gray-500 mb-2">The current schedule for daily reconciliation alerts (Locked for security).</p>
               <input
                 type="time"
-                value={reminderTime}
+                value="12:55"
                 readOnly
                 disabled
-                className="input-field max-w-[150px] bg-gray-50 cursor-not-allowed opacity-75"
+                className="input-field max-w-[150px] bg-gray-50 cursor-not-allowed opacity-75 font-medium"
               />
             </div>
 
