@@ -73,7 +73,6 @@ export default function SettingsClient({ initialSettings, envSettings: _env, aud
       try {
         await setSetting("low_stock_threshold", Number(threshold));
         await setSetting("admin_email", email);
-        await setSetting("reconciliation_reminder_time", reminderTime);
         setStatusMsg({ type: "success", text: "Operational settings saved." });
       } catch (e: any) {
         setStatusMsg({ type: "error", text: e.message });
@@ -144,15 +143,20 @@ export default function SettingsClient({ initialSettings, envSettings: _env, aud
             </div>
 
             <div>
-              <label className="block font-medium text-gray-700 mb-1">Daily Reconciliation Reminder Time</label>
-              <p className="text-xs text-gray-500 mb-2">Set the time (24h format) to receive the daily reconciliation reminder email.</p>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block font-medium text-gray-700">Scheduled Reminder Time</label>
+                <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded uppercase tracking-wider">Managed Externally</span>
+              </div>
+              <p className="text-xs text-gray-500 mb-2">The current schedule for daily reconciliation alerts (Locked for security).</p>
               <input
                 type="time"
                 value={reminderTime}
-                onChange={(e) => setReminderTime(e.target.value)}
-                className="input-field max-w-[150px]"
+                readOnly
+                disabled
+                className="input-field max-w-[150px] bg-gray-50 cursor-not-allowed opacity-75"
               />
             </div>
+
 
             <button onClick={handleSaveOperations} disabled={isPending} className="btn-primary">
               {isPending ? "Saving..." : "Save Operations"}
